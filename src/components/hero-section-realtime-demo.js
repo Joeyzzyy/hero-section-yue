@@ -20,6 +20,11 @@ const HeroSectionRealtimeDemo = () => {
   const videoRef = useRef(null);
   const [responseVideo, setResponseVideo] = useState('');
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const mainContentRef = useRef(null);
+  const historyPanelRef = useRef(null);
+  const [isManualToggle, setIsManualToggle] = useState(false);
+  const manualToggleTimeoutRef = useRef(null);
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -421,215 +426,386 @@ const HeroSectionRealtimeDemo = () => {
     }
   };
 
+  // 添加移动设备检测
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+      setIsMobile(isMobileDevice);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // 添加检查面板重叠的函数
+  const checkPanelOverlap = useCallback(() => {
+    // 如果是手动切换，则跳过自动检查
+    if (isManualToggle) return;
+
+    if (!mainContentRef.current || !historyPanelRef.current) return;
+
+    const mainContent = mainContentRef.current.getBoundingClientRect();
+    const historyPanel = historyPanelRef.current.getBoundingClientRect();
+
+    // 只检查重叠 - 如果空间不够就收起
+    const overlap = mainContent.left - (historyPanel.left + historyPanel.width) < 20;
+    if (overlap && isHistoryPanelOpen) {
+      setIsHistoryPanelOpen(false);
+    }
+  }, [isHistoryPanelOpen, isManualToggle]);
+
+  // 更新切换按钮的点击处理函数
+  const handlePanelToggle = () => {
+    setIsHistoryPanelOpen(!isHistoryPanelOpen);
+    setIsManualToggle(true);
+
+    // 清除之前的定时器
+    if (manualToggleTimeoutRef.current) {
+      clearTimeout(manualToggleTimeoutRef.current);
+    }
+
+    // 设置新的定时器，1秒后重新启用自动响应
+    manualToggleTimeoutRef.current = setTimeout(() => {
+      setIsManualToggle(false);
+    }, 1000);
+  };
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (manualToggleTimeoutRef.current) {
+        clearTimeout(manualToggleTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 添加窗口大小变化监听
+  useEffect(() => {
+    const handleResize = () => {
+      checkPanelOverlap();
+    };
+
+    window.addEventListener('resize', handleResize);
+    // 初始检查
+    checkPanelOverlap();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [checkPanelOverlap]);
+
   // ================ Render UI ================
   return (
-    <div className={styles['banner-container']}>
-      {/* Chat history panel */}
-      <div className={`absolute left-4 top-4 bottom-4 w-80 transition-all duration-300 ease-in-out ${
-        chatHistory.length > 0 ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/20'
-      } rounded-xl overflow-hidden z-10 ${
-        isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-[calc(100%-2rem)]'
-      }`}>
-        {/* Panel Header */}
-        <div className="p-4 border-b border-white/10 backdrop-blur-md flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
-              />
-            </svg>
-            <h3 className="font-medium text-white/90">Conversation History</h3>
-          </div>
-          {/* 添加切换按钮 */}
-          <button 
-            onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <svg 
-              className={`w-5 h-5 text-white/70 transition-transform duration-300 ${
-                isHistoryPanelOpen ? 'rotate-0' : 'rotate-180'
-              }`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Empty State or Chat Messages */}
-        {chatHistory.length === 0 ? (
-          <div className="p-8 text-center text-white/50">
-            <svg className="w-12 h-12 mx-auto mb-3 text-indigo-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
-                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
-              />
-            </svg>
-            <p className="text-sm font-medium">Start a conversation</p>
-            <p className="text-xs mt-1">Your chat history will appear here</p>
-          </div>
-        ) : (
-          <div className={`p-4 overflow-y-auto ${styles['chat-scroll']}`}>
-            {chatHistory.map((message, index) => (
-              <div 
-                key={index} 
-                className={`mb-4 ${message.type === 'user' ? 'text-blue-300' : 'text-green-300'}`}
-              >
-                <div className="text-sm opacity-70 mb-1 font-medium">
-                  {message.type === 'user' ? 'You' : 'YueZhu (Joey)'}:
-                </div>
-                <div className="text-white/80 bg-white/5 rounded-lg p-3 text-sm">
-                  {message.content}
-                  {message.type === 'ai' && message.bulletPoints && message.bulletPoints.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-indigo-300">Key Points:</p>
-                      <ul className="list-disc list-inside space-y-1 pl-2">
-                        {message.bulletPoints.map((point, idx) => (
-                          <li key={idx} className="text-white/70">
-                            {point}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {message.type === 'ai' && message.video && (
-                    <div className="mt-3">
-                      <p className="text-indigo-300 mb-2">Video Recommendation:</p>
-                      <div className="relative aspect-video rounded-lg overflow-hidden">
-                        <video 
-                          src={message.video}
-                          className="w-full"
-                          controls
-                        />
-                      </div>
-                      <a 
-                        href={message.video} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-block mt-2 text-indigo-400 hover:text-indigo-300 transition-colors"
-                      >
-                        Open video in new window →
-                      </a>
-                    </div>
-                  )}
+    <>
+      {isMobile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-lg">
+          <div className="relative max-w-md p-8 bg-gradient-to-br from-indigo-600/90 to-purple-600/90 rounded-2xl shadow-2xl border border-white/20 m-4 overflow-hidden">
+            {/* 添加动态背景效果 */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 bg-grid-white/10 animate-grid-flow"></div>
+              <div className="absolute -inset-[100%] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 animate-shine"></div>
+            </div>
+            
+            <div className="relative flex flex-col items-center text-center space-y-6">
+              {/* 更酷的图标动画 */}
+              <div className="relative w-32 h-32">
+                <div className="absolute inset-0 bg-indigo-500/20 rounded-full animate-ping"></div>
+                <div className="absolute inset-0 bg-purple-500/20 rounded-full animate-ping" style={{animationDelay: '0.2s'}}></div>
+                <div className="relative w-full h-full bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+                  <svg className="w-16 h-16 text-white animate-float" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Avatar container */}
-      <div className={`${styles['avatar-container']} ${isExpanded ? '' : styles['avatar-contracted']}`}>
-        <div className={`relative ${isExpanded ? 'w-64 h-64' : 'w-48 h-48'} transition-all duration-500 
-          ${!isExpanded ? '-translate-x-20' : ''}`}>
-          {!showVideo ? (
-            <img
-              src="/images/zhuyue.png"
-              alt="Digital Avatar"
-              className="w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500"
-            />
-          ) : (
-            <video
-              ref={videoRef}
-              src="/images/zhuyue-lipmoving.mp4"
-              className={`absolute inset-0 w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500 ease-in-out ${
-                showVideo ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
-              }`}
-              style={{
-                transform: showVideo ? 'scale(1.05)' : 'scale(1)',
-                transformOrigin: 'center',
-                objectFit: 'cover'
-              }}
-              loop
-              muted
-              playsInline
-              onError={(e) => {
-                console.error('视频加载错误:', e);
-                setShowVideo(false);
-              }}
-            />
-          )}
-          {floatingTags.map(tag => (
-            <div key={tag.id} style={tag.style} className="transform">
-              {tag.text}
+              {/* 标题动画效果 */}
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300 animate-gradient">
+                  Oops! Desktop Only
+                </h2>
+                <div className="h-1 w-32 mx-auto bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full animate-pulse"></div>
+              </div>
+
+              {/* 更有趣的文案 */}
+              <div className="space-y-4 text-white/90">
+                <p className="text-lg leading-relaxed">
+                  Hey there, mobile friend! 👋
+                  <br />
+                  I'm a bit of a desktop diva 💅
+                  <br />
+                  Let's chat on a bigger screen!
+                </p>
+                
+                <div className="flex items-center justify-center space-x-2 text-sm text-white/60">
+                  <span className="animate-bounce">⌛</span>
+                  <span>Waiting for desktop...</span>
+                  <span className="animate-bounce" style={{animationDelay: '0.1s'}}>⌛</span>
+                </div>
+              </div>
+
+              {/* 添加有趣的底部提示 */}
+              <div className="pt-6 space-y-3">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                </div>
+                <p className="text-sm text-white/50 italic">
+                  Fun fact: I'm not just being difficult,
+                  <br />
+                  I genuinely want to give you the best experience! 🌟
+                </p>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
-
-      {/* Visual effect Canvas */}
-      <canvas
-        ref={canvasRef}
-        className={styles['visual-effect']}
-      />
-
-      {/* Input control area */}
-      <div className="relative z-20 max-w-2xl mx-auto p-4 w-full">
-        <div className="relative">
-          <input
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={processingState !== 'idle'}
-            className={`w-full px-6 py-4 rounded-2xl bg-white/10 border border-indigo-300/30 
-                      text-white backdrop-blur-md focus:ring-2 focus:ring-indigo-500 
-                      focus:border-transparent transition-all duration-300 pr-12
-                      ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            placeholder="Ask me anything..."
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full">
-            {userInput && (
-              <button
-                onClick={() => setUserInput('')}
-                className="text-gray-400 hover:text-white transition-colors p-2"
+      )}
+      <div className={styles['banner-container']}>
+        {/* Chat history panel */}
+        <div 
+          ref={historyPanelRef}
+          className={`absolute left-4 top-4 bottom-4 w-80 transition-all duration-300 ease-in-out ${
+            chatHistory.length > 0 ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/20'
+          } rounded-xl overflow-hidden z-10 ${
+            isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-[calc(100%-2rem)]'
+          }`}
+        >
+          {/* Panel Header */}
+          <div className="p-4 border-b border-white/10 backdrop-blur-md flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+                />
+              </svg>
+              <h3 className="font-medium text-white/90">Conversation History</h3>
+            </div>
+            {/* 添加切换按钮 */}
+            <button 
+              onClick={handlePanelToggle}
+              className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <svg 
+                className={`w-5 h-5 text-white/70 transition-transform duration-300 ${
+                  isHistoryPanelOpen ? 'rotate-0' : 'rotate-180'
+                }`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Messages Container */}
+          <div className={`h-[calc(100%-4rem)] overflow-y-auto ${styles['chat-scroll']}`}>
+            {chatHistory.length === 0 ? (
+              <div className="p-8 text-center text-white/50">
+                <svg className="w-12 h-12 mx-auto mb-3 text-indigo-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
+                  />
                 </svg>
-              </button>
+                <p className="text-sm font-medium">Start a conversation</p>
+                <p className="text-xs mt-1">Your chat history will appear here</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {chatHistory.map((message, index) => (
+                  <div 
+                    key={index} 
+                    className={`mb-4 ${message.type === 'user' ? 'text-blue-300' : 'text-green-300'}`}
+                  >
+                    <div className="text-sm opacity-70 mb-1 font-medium">
+                      {message.type === 'user' ? 'You' : 'YueZhu (Joey)'}:
+                    </div>
+                    <div className="text-white/80 bg-white/5 rounded-lg p-3 text-sm">
+                      {message.content}
+                      {message.type === 'ai' && message.bulletPoints && message.bulletPoints.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-indigo-300">Key Points:</p>
+                          <ul className="list-disc list-inside space-y-1 pl-2">
+                            {message.bulletPoints.map((point, idx) => (
+                              <li key={idx} className="text-white/70">
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {message.type === 'ai' && message.video && (
+                        <div className="mt-3">
+                          <p className="text-indigo-300 mb-2">Video Recommendation:</p>
+                          <div className="relative aspect-video rounded-lg overflow-hidden">
+                            <video 
+                              src={message.video}
+                              className="w-full"
+                              controls
+                            />
+                          </div>
+                          <a 
+                            href={message.video} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-block mt-2 text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            Open video in new window →
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-        
-        <div className="flex gap-3 mt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={processingState !== 'idle' || !userInput.trim()}
-            className="flex-1 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 
-                      hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl
-                      transform hover:scale-105 transition-all duration-300 
-                      disabled:opacity-50 disabled:hover:scale-100 shadow-lg 
-                      shadow-indigo-500/30 font-medium"
-          >
-            {processingState === 'thinking' ? (
-              <span className="flex items-center justify-center">
-                Thinking
-                <span className="ml-2 animate-pulse">...</span>
+
+        {/* 新的主要内容容器 */}
+        <div 
+          ref={mainContentRef}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center justify-center space-y-8 w-full max-w-2xl px-4"
+        >
+          {/* 问候语部分 */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl md:text-5xl font-bold">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-300 via-cyan-300 to-indigo-400 animate-gradient">
+                Hey, I&#39;m YueZhu (Joey)
               </span>
-            ) : processingState === 'answering' ? (
-              <span className="flex items-center justify-center">
-                Answering
-                <span className="ml-2 animate-pulse">...</span>
-              </span>
-            ) : 'Send'}
-          </button>
-          
-          {isSpeaking && (
-            <button
-              onClick={stopSpeech}
-              className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 
-                        hover:from-red-600 hover:to-pink-600 text-white rounded-xl
-                        transform hover:scale-105 transition-all duration-300 font-medium"
-            >
-              Stop
-            </button>
-          )}
+            </h1>
+            
+            <div className="relative">
+              <div className="flex items-center justify-center space-x-3 text-xl text-white/80">
+                <span className={styles['typing-text']}>I am a</span>
+                <div className={styles['dynamic-text']}>
+                  <span>Product Manager &#x1F4BC;</span>
+                  <span>Programmer &#x1F4BB;</span>
+                  <span>Chill Seeker &#x1F3D6;</span>
+                  <span>Work-Life Balancer &#x26F3;</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed backdrop-blur-sm py-2">
+              Working hard now, so I can relax later. 
+              <span className="inline-block mx-1 opacity-80">&#x1F4AA;</span> 
+              Life is a journey, not a race.
+            </p>
+          </div>
+
+          {/* Avatar 部分 */}
+          <div className={`${styles['avatar-container']} ${isExpanded ? '' : styles['avatar-contracted']}`}>
+            <div className={`relative ${isExpanded ? 'w-64 h-64' : 'w-48 h-48'} transition-all duration-500 
+              ${!isExpanded ? '-translate-x-20' : ''}`}>
+              {!showVideo ? (
+                <img
+                  src="/images/zhuyue.png"
+                  alt="Digital Avatar"
+                  className="w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500"
+                />
+              ) : (
+                <video
+                  ref={videoRef}
+                  src="/images/zhuyue-lipmoving.mp4"
+                  className={`absolute inset-0 w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500 ease-in-out ${
+                    showVideo ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+                  }`}
+                  style={{
+                    transform: showVideo ? 'scale(1.05)' : 'scale(1)',
+                    transformOrigin: 'center',
+                    objectFit: 'cover'
+                  }}
+                  loop
+                  muted
+                  playsInline
+                  onError={(e) => {
+                    console.error('视频加载错误:', e);
+                    setShowVideo(false);
+                  }}
+                />
+              )}
+              {floatingTags.map(tag => (
+                <div key={tag.id} style={tag.style} className="transform">
+                  {tag.text}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 输入控制区域 */}
+          <div className="w-full">
+            <div className="relative">
+              <input
+                type="text"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={processingState !== 'idle'}
+                className={`w-full px-6 py-4 rounded-2xl bg-white/10 border border-indigo-300/30 
+                          text-white backdrop-blur-md focus:ring-2 focus:ring-indigo-500 
+                          focus:border-transparent transition-all duration-300 pr-12
+                          ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder="Ask me anything..."
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full">
+                {userInput && (
+                  <button
+                    onClick={() => setUserInput('')}
+                    className="text-gray-400 hover:text-white transition-colors p-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleSubmit}
+                disabled={processingState !== 'idle' || !userInput.trim()}
+                className="flex-1 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 
+                          hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl
+                          transform hover:scale-105 transition-all duration-300 
+                          disabled:opacity-50 disabled:hover:scale-100 shadow-lg 
+                          shadow-indigo-500/30 font-medium"
+              >
+                {processingState === 'thinking' ? (
+                  <span className="flex items-center justify-center">
+                    Thinking
+                    <span className="ml-2 animate-pulse">...</span>
+                  </span>
+                ) : processingState === 'answering' ? (
+                  <span className="flex items-center justify-center">
+                    Answering
+                    <span className="ml-2 animate-pulse">...</span>
+                  </span>
+                ) : 'Send'}
+              </button>
+              
+              {isSpeaking && (
+                <button
+                  onClick={stopSpeech}
+                  className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 
+                            hover:from-red-600 hover:to-pink-600 text-white rounded-xl
+                            transform hover:scale-105 transition-all duration-300 font-medium"
+                >
+                  Stop
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Visual effect Canvas */}
+        <canvas
+          ref={canvasRef}
+          className={styles['visual-effect']}
+        />
       </div>
-    </div>
+    </>
   );
 };
 
