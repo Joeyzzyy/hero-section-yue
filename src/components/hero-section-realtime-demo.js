@@ -19,8 +19,7 @@ const CONTENT = {
     roles: [
       "Product Manager 💼",
       "Programmer 💻",
-      "Chill Seeker 🏖",
-      "Work-Life Balancer ⛳"
+      "Chill Seeker 🏖"
     ],
     iAm: "I am a",
     description: "Working hard now, so I can relax later. 💪 Life is a journey, not a race.",
