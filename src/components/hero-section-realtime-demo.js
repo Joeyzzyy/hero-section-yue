@@ -49,7 +49,7 @@ const CONTENT = {
       waiting: "Waiting for desktop...",
       funFact: "Fun fact: I'm not just being difficult,\nI genuinely want to give you the best experience! 🌟"
     },
-    preferredLanguage: "I prefer to chat with you in"
+    preferredLanguage: "You prefer to chat with me in"
   },
   [LANGUAGES.ZH]: {
     greeting: "你好，我是朱越",
@@ -86,7 +86,7 @@ const CONTENT = {
       waiting: "等待切换到桌面端...",
       funFact: "有趣的是：这不是故意为难你，我真心想给你最好的体验！🌟"
     },
-    preferredLanguage: "我希望和你交流时用"
+    preferredLanguage: "你希望和我交流时用"
   }
 };
 
@@ -250,21 +250,19 @@ const HeroSectionRealtimeDemo = () => {
   // ================ Audio Control Functions ================
   // Stop current speech
   const stopSpeech = useCallback(() => {
-    console.log('Stopping speech...');
+    console.log('调用 stopSpeech...');
     
-    // 立即停止并移除所有音频元素
     const audioElements = document.querySelectorAll('audio');
-    console.log('Found audio elements:', audioElements.length);
+    console.log('找到的音频元素数量:', audioElements.length);
     
     audioElements.forEach((audio, index) => {
-      console.log(`Stopping audio ${index}:`, audio);
+      console.log(`停止音频 ${index}`);
       try {
         audio.pause();
         audio.currentTime = 0;
         audio.remove();
-        console.log(`Successfully stopped audio ${index}`);
       } catch (error) {
-        console.error(`Error stopping audio ${index}:`, error);
+        console.error(`停止音频 ${index} 时出错:`, error);
       }
     });
     
@@ -321,31 +319,14 @@ const HeroSectionRealtimeDemo = () => {
       
       // 根据当前语言选择不同的 TTS 服务
       if (currentLanguage === LANGUAGES.ZH) {
-        // 使用字节跳动的 TTS 服务
-        const response = await fetch('https://openspeech.bytedance.com/api/v1/tts', {
+        console.log('开始生成中文语音...');
+        const response = await fetch('/api/tts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            app: {
-              appid: BYTEDANCE_TTS_CONFIG.APP_ID,
-              token: BYTEDANCE_TTS_CONFIG.TOKEN,
-              cluster: "volcano_icl"
-            },
-            user: {
-              uid: `user_${Date.now()}` // 生成唯一用户ID
-            },
-            audio: {
-              voice_type: BYTEDANCE_TTS_CONFIG.VOICE_TYPE,
-              encoding: "mp3",
-              speed_ratio: 1
-            },
-            request: {
-              reqid: crypto.randomUUID(), // 生成唯一请求ID
-              text: text,
-              operation: "query"
-            }
+            text: text
           })
         });
 
@@ -353,9 +334,105 @@ const HeroSectionRealtimeDemo = () => {
           throw new Error(`字节跳动 TTS API 错误: ${response.status}`);
         }
 
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        audioStream = { type: 'url', data: audioUrl };
+        const data = await response.json();
+        console.log('收到 TTS 响应:', data);
+        
+        if (data.code === 3000 && data.data) {
+          console.log('开始处理音频数据...');
+          // 创建一个 Blob 对象，将base64音频数据转换为二进制
+          const audioData = atob(data.data);
+          const arrayBuffer = new ArrayBuffer(audioData.length);
+          const view = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < audioData.length; i++) {
+            view[i] = audioData.charCodeAt(i);
+          }
+          
+          const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          const audio = new Audio();
+          audio.style.display = 'none';
+          audio.preload = 'auto';
+          document.body.appendChild(audio);
+
+          // 添加视频显示逻辑
+          setShowVideo(true);
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (videoRef.current) {
+            try {
+              await videoRef.current.play();
+            } catch (error) {
+              console.error('视频播放失败:', error);
+              setShowVideo(false);
+            }
+          }
+          
+
+          return new Promise((resolve, reject) => {
+            let isPlaying = false;  // 添加播放状态标志
+            console.log('设置音频事件监听器...');
+            
+            audio.oncanplaythrough = async () => {
+              console.log('音频可以播放了...');
+              if (isPlaying) {
+                console.log('已经在播放中，忽略重复触发');
+                return;
+              }
+              
+              try {
+                isPlaying = true;  // 设置播放状态
+                await audio.play();
+                console.log('开始播放音频');
+                setIsSpeaking(true);
+              } catch (error) {
+                console.error('播放失败:', error);
+                isPlaying = false;  // 重置播放状态
+                reject(error);
+              }
+            };
+
+            audio.onended = () => {
+              console.log('音频播放结束');
+              isPlaying = false;  // 重置播放状态
+
+              // 停止视频播放
+              if (videoRef.current) {
+                videoRef.current.pause();
+              }
+              setShowVideo(false);
+              
+              // 先移除事件监听器，防止重复触发
+              audio.oncanplaythrough = null;
+              audio.onended = null;
+              audio.onerror = null;
+              
+              stopSpeech();
+              URL.revokeObjectURL(audioUrl);
+              audio.remove();
+              resolve();
+            };
+
+            audio.onerror = (error) => {
+              console.error('音频错误:', error);
+              isPlaying = false;  // 重置播放状态
+              
+              // 同样移除事件监听器
+              audio.oncanplaythrough = null;
+              audio.onended = null;
+              audio.onerror = null;
+              
+              stopSpeech();
+              URL.revokeObjectURL(audioUrl);
+              audio.remove();
+              reject(error);
+            };
+
+            audio.src = audioUrl;
+          });
+        } else {
+          throw new Error(data.message || '服务器返回了无效的响应');
+        }
       } else {
         // 使用原有的 ElevenLabs TTS 服务
         const client = new ElevenLabsClient({
@@ -612,7 +689,7 @@ const HeroSectionRealtimeDemo = () => {
       clearTimeout(manualToggleTimeoutRef.current);
     }
 
-    // 设置新的定时器，1秒后重新启用自动应
+    // 设置新的定时器，1秒后重新启用自动
     manualToggleTimeoutRef.current = setTimeout(() => {
       setIsManualToggle(false);
     }, 1000);
@@ -627,7 +704,7 @@ const HeroSectionRealtimeDemo = () => {
     };
   }, []);
 
-  // 添加窗口大小变化监听
+  // 添加窗大小变化监听
   useEffect(() => {
     const handleResize = () => {
       checkPanelOverlap();
