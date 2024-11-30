@@ -6,6 +6,98 @@ import { ElevenLabsClient } from "elevenlabs";
 // 添加字符限制常量
 const CHARACTER_LIMIT = 128;
 
+// 添加语言常量
+const LANGUAGES = {
+  EN: 'en',
+  ZH: 'zh'
+};
+
+// 添加内容字典
+const CONTENT = {
+  [LANGUAGES.EN]: {
+    greeting: "Hey, I'm YueZhu (Joey)",
+    roles: [
+      "Product Manager 💼",
+      "Programmer 💻",
+      "Chill Seeker 🏖",
+      "Work-Life Balancer ⛳"
+    ],
+    iAm: "I am a",
+    description: "Working hard now, so I can relax later. 💪 Life is a journey, not a race.",
+    inputPlaceholder: "Ask me anything...",
+    characterLimit: "Please keep your message under 128 characters",
+    sendButton: "Send",
+    thinkingStatus: "Thinking",
+    answeringStatus: "Answering",
+    stopButton: "Stop",
+    chatHistory: {
+      title: "Conversation History",
+      empty: {
+        title: "Start a conversation",
+        subtitle: "Your chat history will appear here"
+      },
+      you: "You",
+      assistant: "YueZhu (Joey)",
+      keyPoints: "Key Points:",
+      videoRecommendation: "Video Recommendation:",
+      openVideo: "Open video in new window →"
+    },
+    mobileMessage: {
+      title: "Oops! Desktop Only",
+      greeting: "Hey there, mobile friend! 👋",
+      line1: "I'm a bit of a desktop diva 💅",
+      line2: "Let's chat on a bigger screen!",
+      waiting: "Waiting for desktop...",
+      funFact: "Fun fact: I'm not just being difficult,\nI genuinely want to give you the best experience! 🌟"
+    },
+    preferredLanguage: "I prefer to chat with you in"
+  },
+  [LANGUAGES.ZH]: {
+    greeting: "你好，我是朱越",
+    roles: [
+      "产品经理 💼",
+      "程序员 💻",
+      "享受人生大师 🏖",
+    ],
+    iAm: "我是一名",
+    description: "人生是段旅程，不是赛跑。💪",
+    inputPlaceholder: "和我聊点什么...",
+    characterLimit: "请将消息控制在128字符以内",
+    sendButton: "发送",
+    thinkingStatus: "思考中",
+    answeringStatus: "回答中",
+    stopButton: "停止",
+    chatHistory: {
+      title: "对话历史",
+      empty: {
+        title: "开始对话",
+        subtitle: "你的聊天记录将显示在这里"
+      },
+      you: "你",
+      assistant: "朱越",
+      keyPoints: "要点：",
+      videoRecommendation: "视频推荐：",
+      openVideo: "在新窗口打开视频 →"
+    },
+    mobileMessage: {
+      title: "抱歉！仅支持桌面版",
+      greeting: "亲爱的移动端用户！👋",
+      line1: "我是个桌面端控 💅",
+      line2: "让我们在更大的屏幕上聊天吧！",
+      waiting: "等待切换到桌面端...",
+      funFact: "有趣的是：这不是故意为难你，我真心想给你最好的体验！🌟"
+    },
+    preferredLanguage: "我希望和你交流时用"
+  }
+};
+
+// 添加字节语音服务的配置
+const BYTEDANCE_TTS_CONFIG = {
+  APP_ID: process.env.NEXT_PUBLIC_BYTEDANCE_APP_ID,
+  TOKEN: process.env.NEXT_PUBLIC_BYTEDANCE_TOKEN,
+  VOICE_TYPE: process.env.NEXT_PUBLIC_BYTEDANCE_VOICE_TYPE,
+};
+
 const HeroSectionRealtimeDemo = () => {
   // ================ State Management ================
   const canvasRef = useRef(null);
@@ -29,6 +121,9 @@ const HeroSectionRealtimeDemo = () => {
   const [isManualToggle, setIsManualToggle] = useState(false);
   const manualToggleTimeoutRef = useRef(null);
   const [isOverLimit, setIsOverLimit] = useState(false);
+
+  // 添加语言状态
+  const [currentLanguage, setCurrentLanguage] = useState(LANGUAGES.EN);
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -223,75 +318,125 @@ const HeroSectionRealtimeDemo = () => {
         setIsExpanded(true);
       }
 
-      // TTS API call
-      const client = new ElevenLabsClient({
-        apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-      });
+      let audioStream;
       
-      const audioStream = await client.textToSpeech.convert(
-        process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
-        {
-          model_id: "eleven_multilingual_v1",
-          text: text,
-          output_format: "mp3_44100_128",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true,
-            speaking_rate: 1.0
-          }
-        },
-        { stream: false }
-      );
+      // 根据当前语言选择不同的 TTS 服务
+      if (currentLanguage === LANGUAGES.ZH) {
+        // 使用字节跳动的 TTS 服务
+        const response = await fetch('https://openspeech.bytedance.com/api/v1/tts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            app: {
+              appid: BYTEDANCE_TTS_CONFIG.APP_ID,
+              token: BYTEDANCE_TTS_CONFIG.TOKEN,
+              cluster: "volcano_icl"
+            },
+            user: {
+              uid: `user_${Date.now()}` // 生成唯一用户ID
+            },
+            audio: {
+              voice_type: BYTEDANCE_TTS_CONFIG.VOICE_TYPE,
+              encoding: "mp3",
+              speed_ratio: 1
+            },
+            request: {
+              reqid: crypto.randomUUID(), // 生成唯一请求ID
+              text: text,
+              operation: "query"
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`字节跳动 TTS API 错误: ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audioStream = { type: 'url', data: audioUrl };
+      } else {
+        // 使用原有的 ElevenLabs TTS 服务
+        const client = new ElevenLabsClient({
+          apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
+        });
+        
+        audioStream = await client.textToSpeech.convert(
+          process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
+          {
+            model_id: "eleven_multilingual_v1",
+            text: text,
+            output_format: "mp3_44100_128",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              style: 0.0,
+              use_speaker_boost: true,
+              speaking_rate: 1.0
+            }
+          },
+          { stream: false }
+        );
+      }
 
       // 修改视频显示和播放逻辑
       setShowVideo(true);
-      await new Promise(resolve => setTimeout(resolve, 100)); // 给DOM更新一些时间
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       if (videoRef.current) {
         try {
           await videoRef.current.play();
         } catch (error) {
           console.error('视频播放失败:', error);
-          // 如果视频播放失败，回退到静态图片
           setShowVideo(false);
         }
       }
       
       setIsSpeaking(true);
 
-      // 创建音频元素
-      const chunks = [];
-      try {
-        while (true) {
-          const { done, value } = await audioStream.reader.read();
-          if (done) break;
-          chunks.push(value);
-        }
-      } finally {
-        audioStream.reader.releaseLock();
-      }
-      
-      const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
-      const blob = new Blob([audioData], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      
-      // 添加到 DOM 中，但隐藏起来
+      // 创建和播放音频
+      const audio = new Audio();
       audio.style.display = 'none';
       document.body.appendChild(audio);
-      
+
+      if (currentLanguage === LANGUAGES.ZH) {
+        // 字节跳动 TTS 返回的是直接的音频 URL
+        audio.src = audioStream.data;
+      } else {
+        // ElevenLabs TTS 返回的是流数据
+        const chunks = [];
+        try {
+          while (true) {
+            const { done, value } = await audioStream.reader.read();
+            if (done) break;
+            chunks.push(value);
+          }
+        } finally {
+          audioStream.reader.releaseLock();
+        }
+        
+        const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
+        const blob = new Blob([audioData], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(blob);
+        audio.src = audioUrl;
+      }
+
       audio.onended = () => {
         stopSpeech();
-        URL.revokeObjectURL(audioUrl);
-        audio.remove(); // 播放结束后移除
+        if (currentLanguage === LANGUAGES.EN) {
+          URL.revokeObjectURL(audio.src);
+        }
+        audio.remove();
       };
 
       audio.onerror = (error) => {
-        console.error('Audio playback error:', error);
+        console.error('音频播放错误:', error);
         stopSpeech();
-        URL.revokeObjectURL(audioUrl);
+        if (currentLanguage === LANGUAGES.EN) {
+          URL.revokeObjectURL(audio.src);
+        }
         audio.remove();
       };
 
@@ -305,8 +450,8 @@ const HeroSectionRealtimeDemo = () => {
       });
 
     } catch (error) {
-      console.error('TTS Error:', error);
-      setShowVideo(false); // 确保出错时关闭视频
+      console.error('TTS 错误:', error);
+      setShowVideo(false);
       stopSpeech();
       throw error;
     }
@@ -356,7 +501,6 @@ const HeroSectionRealtimeDemo = () => {
         ...prev
       ]);
 
-      // 构建历史记录字符串
       const historyString = chatHistory
         .map(msg => `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
         .reverse()
@@ -371,11 +515,11 @@ const HeroSectionRealtimeDemo = () => {
         body: JSON.stringify({
           inputs: { 
             Question: userInput,
-            History: historyString || '' // 添加历史记录，如果没有则传空字符串
+            History: historyString || '',
+            Lang: currentLanguage
           },
           response_mode: "blocking",
           user: "default_user",
-          language: "en"
         }),
       });
       
@@ -469,7 +613,7 @@ const HeroSectionRealtimeDemo = () => {
       clearTimeout(manualToggleTimeoutRef.current);
     }
 
-    // 设置新的定时器，1秒后重新启用自动响应
+    // 设置新的定时器，1秒后重新启用自动应
     manualToggleTimeoutRef.current = setTimeout(() => {
       setIsManualToggle(false);
     }, 1000);
@@ -502,6 +646,11 @@ const HeroSectionRealtimeDemo = () => {
     const input = e.target.value;
     setUserInput(input);
     setIsOverLimit(input.length > CHARACTER_LIMIT);
+  };
+
+  // 添加语言切换处理函数
+  const toggleLanguage = () => {
+    setCurrentLanguage(prev => prev === LANGUAGES.EN ? LANGUAGES.ZH : LANGUAGES.EN);
   };
 
   // ================ Render UI ================
@@ -589,7 +738,7 @@ const HeroSectionRealtimeDemo = () => {
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
                 />
               </svg>
-              <h3 className="font-medium text-white/90">Conversation History</h3>
+              <h3 className="font-medium text-white/90">{CONTENT[currentLanguage].chatHistory.title}</h3>
             </div>
             {/* 添加切换按钮 */}
             <button 
@@ -618,8 +767,8 @@ const HeroSectionRealtimeDemo = () => {
                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
                   />
                 </svg>
-                <p className="text-sm font-medium">Start a conversation</p>
-                <p className="text-xs mt-1">Your chat history will appear here</p>
+                <p className="text-sm font-medium">{CONTENT[currentLanguage].chatHistory.empty.title}</p>
+                <p className="text-xs mt-1">{CONTENT[currentLanguage].chatHistory.empty.subtitle}</p>
               </div>
             ) : (
               <div className="p-4 space-y-4">
@@ -629,13 +778,13 @@ const HeroSectionRealtimeDemo = () => {
                     className={`mb-4 ${message.type === 'user' ? 'text-blue-300' : 'text-green-300'}`}
                   >
                     <div className="text-sm opacity-70 mb-1 font-medium">
-                      {message.type === 'user' ? 'You' : 'YueZhu (Joey)'}:
+                      {message.type === 'user' ? CONTENT[currentLanguage].chatHistory.you : CONTENT[currentLanguage].chatHistory.assistant}:
                     </div>
                     <div className="text-white/80 bg-white/5 rounded-lg p-3 text-sm">
                       {message.content}
                       {message.type === 'ai' && message.bulletPoints && message.bulletPoints.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <p className="text-indigo-300">Key Points:</p>
+                          <p className="text-indigo-300">{CONTENT[currentLanguage].chatHistory.keyPoints}</p>
                           <ul className="list-disc list-inside space-y-1 pl-2">
                             {message.bulletPoints.map((point, idx) => (
                               <li key={idx} className="text-white/70">
@@ -647,7 +796,7 @@ const HeroSectionRealtimeDemo = () => {
                       )}
                       {message.type === 'ai' && message.video && (
                         <div className="mt-3">
-                          <p className="text-indigo-300 mb-2">Video Recommendation:</p>
+                          <p className="text-indigo-300 mb-2">{CONTENT[currentLanguage].chatHistory.videoRecommendation}</p>
                           <div className="relative aspect-video rounded-lg overflow-hidden">
                             <video 
                               src={message.video}
@@ -661,7 +810,7 @@ const HeroSectionRealtimeDemo = () => {
                             rel="noopener noreferrer"
                             className="inline-block mt-2 text-indigo-400 hover:text-indigo-300 transition-colors"
                           >
-                            Open video in new window →
+                            {CONTENT[currentLanguage].chatHistory.openVideo}
                           </a>
                         </div>
                       )}
@@ -682,26 +831,50 @@ const HeroSectionRealtimeDemo = () => {
           <div className="text-center space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-300 via-cyan-300 to-indigo-400 animate-gradient">
-                Hey, I&#39;m YueZhu (Joey)
+                {CONTENT[currentLanguage].greeting}
               </span>
             </h1>
             
             <div className="relative">
               <div className="flex items-center justify-center space-x-3 text-xl text-white/80">
-                <span className={styles['typing-text']}>I am a</span>
+                <span className={styles['typing-text']}>{CONTENT[currentLanguage].iAm}</span>
                 <div className={styles['dynamic-text']}>
-                  <span>Product Manager &#x1F4BC;</span>
-                  <span>Programmer &#x1F4BB;</span>
-                  <span>Chill Seeker &#x1F3D6;</span>
-                  <span>Work-Life Balancer &#x26F3;</span>
+                  {CONTENT[currentLanguage].roles.map((role, index) => (
+                    <span key={index}>{role}</span>
+                  ))}
                 </div>
               </div>
             </div>
 
+            {/* 添加语言切换器和语言偏好提示 */}
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <span className="text-sm text-white/70">
+                {CONTENT[currentLanguage].preferredLanguage}
+              </span>
+              <button
+                onClick={toggleLanguage}
+                className="group relative flex items-center gap-2 px-4 py-2 bg-white/10 
+                          hover:bg-white/15 backdrop-blur-md rounded-full border border-white/20 
+                          text-white/90 hover:text-white transition-all duration-300"
+              >
+                <span className={`text-sm font-medium transition-all duration-300 
+                  ${currentLanguage === LANGUAGES.EN ? 'opacity-100' : 'opacity-50'}`}>
+                  English
+                </span>
+                <div className={`w-8 h-5 flex items-center bg-indigo-500/30 rounded-full p-1 transition-all duration-300
+                  ${currentLanguage === LANGUAGES.ZH ? 'bg-indigo-500' : ''}`}>
+                  <div className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform duration-300
+                    ${currentLanguage === LANGUAGES.ZH ? 'translate-x-3' : ''}`} />
+                </div>
+                <span className={`text-sm font-medium transition-all duration-300
+                  ${currentLanguage === LANGUAGES.ZH ? 'opacity-100' : 'opacity-50'}`}>
+                  中文
+                </span>
+              </button>
+            </div>
+
             <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed backdrop-blur-sm py-2">
-              Working hard now, so I can relax later. 
-              <span className="inline-block mx-1 opacity-80">&#x1F4AA;</span> 
-              Life is a journey, not a race.
+              {CONTENT[currentLanguage].description}
             </p>
           </div>
 
@@ -760,7 +933,7 @@ const HeroSectionRealtimeDemo = () => {
                           focus:border-transparent transition-all duration-300 
                           pr-24
                           ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                placeholder="Ask me anything..."
+                placeholder={CONTENT[currentLanguage].inputPlaceholder}
                 maxLength={CHARACTER_LIMIT + 10}
               />
               {/* Character count indicator - 调整样式确保始终可见 */}
@@ -791,7 +964,7 @@ const HeroSectionRealtimeDemo = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span>Please keep your message under 128 characters</span>
+                <span>{CONTENT[currentLanguage].characterLimit}</span>
               </div>
             )}
 
@@ -807,15 +980,15 @@ const HeroSectionRealtimeDemo = () => {
               >
                 {processingState === 'thinking' ? (
                   <span className="flex items-center justify-center">
-                    Thinking
+                    {CONTENT[currentLanguage].thinkingStatus}
                     <span className="ml-2 animate-pulse">...</span>
                   </span>
                 ) : processingState === 'answering' ? (
                   <span className="flex items-center justify-center">
-                    Answering
+                    {CONTENT[currentLanguage].answeringStatus}
                     <span className="ml-2 animate-pulse">...</span>
                   </span>
-                ) : 'Send'}
+                ) : CONTENT[currentLanguage].sendButton}
               </button>
               
               {isSpeaking && (
@@ -825,7 +998,7 @@ const HeroSectionRealtimeDemo = () => {
                             hover:from-red-600 hover:to-pink-600 text-white rounded-xl
                             transform hover:scale-105 transition-all duration-300 font-medium"
                 >
-                  Stop
+                  {CONTENT[currentLanguage].stopButton}
                 </button>
               )}
             </div>
