@@ -3,6 +3,9 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styles from './hero-section-realtime-demo.module.css';
 import { ElevenLabsClient } from "elevenlabs";
 
+// 添加字符限制常量
+const CHARACTER_LIMIT = 128;
+
 const HeroSectionRealtimeDemo = () => {
   // ================ State Management ================
   const canvasRef = useRef(null);
@@ -25,6 +28,7 @@ const HeroSectionRealtimeDemo = () => {
   const historyPanelRef = useRef(null);
   const [isManualToggle, setIsManualToggle] = useState(false);
   const manualToggleTimeoutRef = useRef(null);
+  const [isOverLimit, setIsOverLimit] = useState(false);
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -448,7 +452,7 @@ const HeroSectionRealtimeDemo = () => {
     const mainContent = mainContentRef.current.getBoundingClientRect();
     const historyPanel = historyPanelRef.current.getBoundingClientRect();
 
-    // 只检查重叠 - 如果空间不够就收起
+    // 只检查重叠 - 如果空间不够就起
     const overlap = mainContent.left - (historyPanel.left + historyPanel.width) < 20;
     if (overlap && isHistoryPanelOpen) {
       setIsHistoryPanelOpen(false);
@@ -492,6 +496,13 @@ const HeroSectionRealtimeDemo = () => {
 
     return () => window.removeEventListener('resize', handleResize);
   }, [checkPanelOverlap]);
+
+  // 修改 input onChange 处理函数
+  const handleInputChange = (e) => {
+    const input = e.target.value;
+    setUserInput(input);
+    setIsOverLimit(input.length > CHARACTER_LIMIT);
+  };
 
   // ================ Render UI ================
   return (
@@ -739,16 +750,27 @@ const HeroSectionRealtimeDemo = () => {
               <input
                 type="text"
                 value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
+                onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
                 disabled={processingState !== 'idle'}
-                className={`w-full px-6 py-4 rounded-2xl bg-white/10 border border-indigo-300/30 
-                          text-white backdrop-blur-md focus:ring-2 focus:ring-indigo-500 
-                          focus:border-transparent transition-all duration-300 pr-12
+                className={`w-full px-6 py-4 rounded-2xl bg-white/10 border 
+                          ${isOverLimit ? 'border-red-500' : 'border-indigo-300/30'}
+                          text-white backdrop-blur-md focus:ring-2 
+                          ${isOverLimit ? 'focus:ring-red-500' : 'focus:ring-indigo-500'}
+                          focus:border-transparent transition-all duration-300 
+                          pr-24
                           ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 placeholder="Ask me anything..."
+                maxLength={CHARACTER_LIMIT + 10}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full">
+              {/* Character count indicator - 调整样式确保始终可见 */}
+              <div className={`absolute right-14 top-1/2 -translate-y-1/2 text-sm 
+                            ${isOverLimit ? 'text-red-400' : 'text-gray-400'}
+                            bg-slate-900/80 px-1 rounded`}>
+                {userInput.length}/{CHARACTER_LIMIT}
+              </div>
+              {/* Clear button */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {userInput && (
                   <button
                     onClick={() => setUserInput('')}
@@ -762,10 +784,21 @@ const HeroSectionRealtimeDemo = () => {
               </div>
             </div>
             
+            {/* Error message */}
+            {isOverLimit && (
+              <div className="text-red-400 text-sm mt-2 ml-2 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Please keep your message under 128 characters</span>
+              </div>
+            )}
+
             <div className="flex gap-3 mt-4">
               <button
                 onClick={handleSubmit}
-                disabled={processingState !== 'idle' || !userInput.trim()}
+                disabled={processingState !== 'idle' || !userInput.trim() || isOverLimit}
                 className="flex-1 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 
                           hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl
                           transform hover:scale-105 transition-all duration-300 
