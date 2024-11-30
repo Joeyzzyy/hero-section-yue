@@ -1,7 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async redirects() {
-    return [];
+    return [
+      {
+        source: '/:path+',
+        destination: '/',
+        permanent: true,
+        has: [
+          {
+            type: 'header',
+            key: 'accept',
+            // 排除图片请求的重定向
+            value: '(?!image/*)(.*)',
+          },
+        ],
+      }
+    ];
   },
   headers: async () => {
     return [

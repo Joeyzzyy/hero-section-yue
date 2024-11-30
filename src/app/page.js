@@ -1,4 +1,4 @@
-import HeroSectionRealtimeDemo from '../../components/hero-section-realtime-demo';
+import HeroSectionRealtimeDemo from '../components/hero-section-realtime-demo';
 
 export const metadata = {
   title: 'Interactive AI Demo - KreadoAI',
