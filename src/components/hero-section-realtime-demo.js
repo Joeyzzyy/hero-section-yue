@@ -19,6 +19,7 @@ const HeroSectionRealtimeDemo = () => {
   const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef(null);
   const [responseVideo, setResponseVideo] = useState('');
+  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(true);
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -339,12 +340,18 @@ const HeroSectionRealtimeDemo = () => {
     playingRef.current = true;
     
     try {
-      const currentInput = userInput; // 保存当前输入
-      setUserInput(''); // 立即清空输入框
+      const currentInput = userInput;
+      setUserInput('');
       setChatHistory(prev => [
         { type: 'user', content: currentInput },
         ...prev
       ]);
+
+      // 构建历史记录字符串
+      const historyString = chatHistory
+        .map(msg => `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .reverse()
+        .join('\n');
       
       const response = await fetch('https://dify.sheet2email.com/v1/workflows/run', {
         method: 'POST',
@@ -353,7 +360,10 @@ const HeroSectionRealtimeDemo = () => {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_DIFY_API_KEY}`,
         },
         body: JSON.stringify({
-          inputs: { Question: userInput },
+          inputs: { 
+            Question: userInput,
+            History: historyString || '' // 添加历史记录，如果没有则传空字符串
+          },
           response_mode: "blocking",
           user: "default_user",
           language: "en"
@@ -417,9 +427,11 @@ const HeroSectionRealtimeDemo = () => {
       {/* Chat history panel */}
       <div className={`absolute left-4 top-4 bottom-4 w-80 transition-all duration-300 ease-in-out ${
         chatHistory.length > 0 ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/20'
-      } rounded-xl overflow-hidden z-10`}>
+      } rounded-xl overflow-hidden z-10 ${
+        isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-[calc(100%-2rem)]'
+      }`}>
         {/* Panel Header */}
-        <div className="p-4 border-b border-white/10 backdrop-blur-md">
+        <div className="p-4 border-b border-white/10 backdrop-blur-md flex justify-between items-center">
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -428,6 +440,22 @@ const HeroSectionRealtimeDemo = () => {
             </svg>
             <h3 className="font-medium text-white/90">Conversation History</h3>
           </div>
+          {/* 添加切换按钮 */}
+          <button 
+            onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <svg 
+              className={`w-5 h-5 text-white/70 transition-transform duration-300 ${
+                isHistoryPanelOpen ? 'rotate-0' : 'rotate-180'
+              }`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
 
         {/* Empty State or Chat Messages */}
