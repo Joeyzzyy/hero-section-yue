@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styles from './hero-section-realtime-demo.module.css';
 import { ElevenLabsClient } from "elevenlabs";
 
@@ -14,6 +14,11 @@ const HeroSectionRealtimeDemo = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const playingRef = useRef(false);
   const [processingState, setProcessingState] = useState('idle'); // 'idle' | 'thinking' | 'answering'
+  const [chatHistory, setChatHistory] = useState([]);
+  const animationRef = useRef(null);
+  const [showVideo, setShowVideo] = useState(false);
+  const videoRef = useRef(null);
+  const [responseVideo, setResponseVideo] = useState('');
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -140,21 +145,58 @@ const HeroSectionRealtimeDemo = () => {
 
   // ================ Audio Control Functions ================
   // Stop current speech
-  const stopSpeech = () => {
-    document.querySelectorAll('audio').forEach(audio => {
-      audio.pause();
-      audio.currentTime = 0;
+  const stopSpeech = useCallback(() => {
+    console.log('Stopping speech...');
+    
+    // 立即停止并移除所有音频元素
+    const audioElements = document.querySelectorAll('audio');
+    console.log('Found audio elements:', audioElements.length);
+    
+    audioElements.forEach((audio, index) => {
+      console.log(`Stopping audio ${index}:`, audio);
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.remove();
+        console.log(`Successfully stopped audio ${index}`);
+      } catch (error) {
+        console.error(`Error stopping audio ${index}:`, error);
+      }
     });
+    
+    // 停止视频并切换回图片
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    setShowVideo(false);
+    
+    // 重置所有状态
     setIsSpeaking(false);
     setFloatingTags([]);
     setIsExpanded(true);
     playingRef.current = false;
-  };
+    setProcessingState('idle');
+    
+    console.log('Speech stop completed');
+  }, []);
+
+  // 清理函数
+  useEffect(() => {
+    return () => {
+      // 组件卸载时确保清理视频资源
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      }
+    };
+  }, []);
 
   // Generate speech
   const generateSpeech = async (text, bulletPoints = []) => {
     try {
       stopSpeech();
+      setProcessingState('answering');
       
       if (bulletPoints && bulletPoints.length > 0) {
         const styleGenerator = generateTagStyle();
@@ -179,20 +221,37 @@ const HeroSectionRealtimeDemo = () => {
       const audioStream = await client.textToSpeech.convert(
         process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
         {
-          model_id: "eleven_monolingual_v1",
+          model_id: "eleven_multilingual_v1",
           text: text,
           output_format: "mp3_44100_128",
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
             style: 0.0,
-            use_speaker_boost: true
+            use_speaker_boost: true,
+            speaking_rate: 1.0
           }
         },
         { stream: false }
       );
 
-      // Process audio stream
+      // 修改视频显示和播放逻辑
+      setShowVideo(true);
+      await new Promise(resolve => setTimeout(resolve, 100)); // 给DOM更新一些时间
+      
+      if (videoRef.current) {
+        try {
+          await videoRef.current.play();
+        } catch (error) {
+          console.error('视频播放失败:', error);
+          // 如果视频播放失败，回退到静态图片
+          setShowVideo(false);
+        }
+      }
+      
+      setIsSpeaking(true);
+
+      // 创建音频元素
       const chunks = [];
       try {
         while (true) {
@@ -204,41 +263,41 @@ const HeroSectionRealtimeDemo = () => {
         audioStream.reader.releaseLock();
       }
       
-      // Create audio element
       const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
       const blob = new Blob([audioData], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       
-      // Set audio event handlers
+      // 添加到 DOM 中，但隐藏起来
+      audio.style.display = 'none';
+      document.body.appendChild(audio);
+      
       audio.onended = () => {
-        setIsSpeaking(false);
-        setFloatingTags([]);
-        setIsExpanded(true);
+        stopSpeech();
         URL.revokeObjectURL(audioUrl);
+        audio.remove(); // 播放结束后移除
       };
 
       audio.onerror = (error) => {
         console.error('Audio playback error:', error);
-        console.error('Error details:', audio.error);
+        stopSpeech();
         URL.revokeObjectURL(audioUrl);
+        audio.remove();
       };
 
       await audio.play();
-      
-      // 返回一个 Promise，在音频播放完成时 resolve
+
       return new Promise((resolve) => {
         audio.addEventListener('ended', () => {
-          setIsSpeaking(false);
+          stopSpeech();
           resolve();
         });
       });
 
     } catch (error) {
       console.error('TTS Error:', error);
-      setIsSpeaking(false);
-      setIsExpanded(true);
-      setFloatingTags([]);
+      setShowVideo(false); // 确保出错时关闭视频
+      stopSpeech();
       throw error;
     }
   };
@@ -280,6 +339,13 @@ const HeroSectionRealtimeDemo = () => {
     playingRef.current = true;
     
     try {
+      const currentInput = userInput; // 保存当前输入
+      setUserInput(''); // 立即清空输入框
+      setChatHistory(prev => [
+        { type: 'user', content: currentInput },
+        ...prev
+      ]);
+      
       const response = await fetch('http://dify.sheet2email.com/v1/workflows/run', {
         method: 'POST',
         headers: {
@@ -301,9 +367,24 @@ const HeroSectionRealtimeDemo = () => {
       const data = await response.json();
       
       if (data.data?.outputs?.result) {
-        setProcessingState('answering');
         const result = JSON.parse(data.data.outputs.result);
-        await generateSpeech(result.answer, result.bulletPoints || []);
+        setChatHistory(prev => [
+          { // 新消息放在数组开头
+            type: 'ai', 
+            content: result.answer,
+            video: result.video,
+            bulletPoints: result.bulletPoints
+          },
+          ...prev
+        ]);
+        
+        setProcessingState('answering');
+        try {
+          await generateSpeech(result.answer, result.bulletPoints || []);
+        } catch (error) {
+          console.error('Speech generation error:', error);
+          setProcessingState('idle');
+        }
       }
     } catch (error) {
       console.error('Request error:', error);
@@ -320,19 +401,128 @@ const HeroSectionRealtimeDemo = () => {
     }
   };
 
+  // 添加处理回车的函数
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // 防止换行
+      if (userInput.trim() && processingState === 'idle') {
+        handleSubmit();
+      }
+    }
+  };
+
   // ================ Render UI ================
   return (
     <div className={styles['banner-container']}>
+      {/* Chat history panel */}
+      <div className={`absolute left-4 top-4 bottom-4 w-80 transition-all duration-300 ease-in-out ${
+        chatHistory.length > 0 ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/20'
+      } rounded-xl overflow-hidden z-10`}>
+        {/* Panel Header */}
+        <div className="p-4 border-b border-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+              />
+            </svg>
+            <h3 className="font-medium text-white/90">Conversation History</h3>
+          </div>
+        </div>
+
+        {/* Empty State or Chat Messages */}
+        {chatHistory.length === 0 ? (
+          <div className="p-8 text-center text-white/50">
+            <svg className="w-12 h-12 mx-auto mb-3 text-indigo-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
+              />
+            </svg>
+            <p className="text-sm font-medium">Start a conversation</p>
+            <p className="text-xs mt-1">Your chat history will appear here</p>
+          </div>
+        ) : (
+          <div className={`p-4 overflow-y-auto ${styles['chat-scroll']}`}>
+            {chatHistory.map((message, index) => (
+              <div 
+                key={index} 
+                className={`mb-4 ${message.type === 'user' ? 'text-blue-300' : 'text-green-300'}`}
+              >
+                <div className="text-sm opacity-70 mb-1 font-medium">
+                  {message.type === 'user' ? 'You' : 'YueZhu (Joey)'}:
+                </div>
+                <div className="text-white/80 bg-white/5 rounded-lg p-3 text-sm">
+                  {message.content}
+                  {message.type === 'ai' && message.bulletPoints && message.bulletPoints.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-indigo-300">Key Points:</p>
+                      <ul className="list-disc list-inside space-y-1 pl-2">
+                        {message.bulletPoints.map((point, idx) => (
+                          <li key={idx} className="text-white/70">
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {message.type === 'ai' && message.video && (
+                    <div className="mt-3">
+                      <p className="text-indigo-300 mb-2">Video Recommendation:</p>
+                      <div className="relative aspect-video rounded-lg overflow-hidden">
+                        <video 
+                          src={message.video}
+                          className="w-full"
+                          controls
+                        />
+                      </div>
+                      <a 
+                        href={message.video} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2 text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        Open video in new window →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Avatar container */}
       <div className={`${styles['avatar-container']} ${isExpanded ? '' : styles['avatar-contracted']}`}>
         <div className={`relative ${isExpanded ? 'w-64 h-64' : 'w-48 h-48'} transition-all duration-500 
           ${!isExpanded ? '-translate-x-20' : ''}`}>
-          <img
-            src="/images/zhuyue.png"
-            alt="Digital Avatar"
-            className="w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500"
-          />
-          {/* Floating tags */}
+          {!showVideo ? (
+            <img
+              src="/images/zhuyue.png"
+              alt="Digital Avatar"
+              className="w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500"
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              src="/images/zhuyue-lipmoving.mp4"
+              className={`absolute inset-0 w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500 ease-in-out ${
+                showVideo ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+              }`}
+              style={{
+                transform: showVideo ? 'scale(1.05)' : 'scale(1)',
+                transformOrigin: 'center',
+                objectFit: 'cover'
+              }}
+              loop
+              muted
+              playsInline
+              onError={(e) => {
+                console.error('视频加载错误:', e);
+                setShowVideo(false);
+              }}
+            />
+          )}
           {floatingTags.map(tag => (
             <div key={tag.id} style={tag.style} className="transform">
               {tag.text}
@@ -354,9 +544,12 @@ const HeroSectionRealtimeDemo = () => {
             type="text"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            className="w-full px-6 py-4 rounded-2xl bg-white/10 border border-indigo-300/30 
+            onKeyPress={handleKeyPress}
+            disabled={processingState !== 'idle'}
+            className={`w-full px-6 py-4 rounded-2xl bg-white/10 border border-indigo-300/30 
                       text-white backdrop-blur-md focus:ring-2 focus:ring-indigo-500 
-                      focus:border-transparent transition-all duration-300 pr-12"
+                      focus:border-transparent transition-all duration-300 pr-12
+                      ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
             placeholder="Ask me anything..."
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full">

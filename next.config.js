@@ -10,8 +10,8 @@ const nextConfig = {
           {
             type: 'header',
             key: 'accept',
-            // 排除图片请求的重定向
-            value: '(?!image/*)(.*)',
+            // 只重定向 text/html 和 application/* 类型的请求
+            value: '(text/html|application/.*)',
           },
         ],
       }
