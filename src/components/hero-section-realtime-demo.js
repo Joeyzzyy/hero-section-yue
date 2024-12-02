@@ -2,18 +2,19 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styles from './hero-section-realtime-demo.module.css';
 import { ElevenLabsClient } from "elevenlabs";
+import PhotoWall from './photo-wall';
 
 // 添加字符限制常量
 const CHARACTER_LIMIT = 128;
 
 // 添加语言常量
-const LANGUAGES = {
+export const LANGUAGES = {
   EN: 'en',
   ZH: 'zh'
 };
 
 // 添加内容字典
-const CONTENT = {
+export const CONTENT = {
   [LANGUAGES.EN]: {
     greeting: "Hey, I'm YueZhu (Joey)",
     roles: [
@@ -49,7 +50,11 @@ const CONTENT = {
       waiting: "Waiting for desktop...",
       funFact: "Fun fact: I'm not just being difficult,\nI genuinely want to give you the best experience! 🌟"
     },
-    preferredLanguage: "You prefer to chat with me in"
+    preferredLanguage: "You prefer to chat with me in",
+    photoWall: {
+      slowDown: "Slow Down",
+      speedUp: "Speed Up"
+    }
   },
   [LANGUAGES.ZH]: {
     greeting: "你好，我是朱越",
@@ -86,7 +91,11 @@ const CONTENT = {
       waiting: "等待切换到桌面端...",
       funFact: "有趣的是：这不是故意为难你，我真心想给你最好的体验！🌟"
     },
-    preferredLanguage: "你希望和我交流时用"
+    preferredLanguage: "你希望和我交流时用",
+    photoWall: {
+      slowDown: "减速",
+      speedUp: "加速"
+    }
   }
 };
 
@@ -102,17 +111,14 @@ const HeroSectionRealtimeDemo = () => {
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
   const [userInput, setUserInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [floatingTags, setFloatingTags] = useState([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const playingRef = useRef(false);
   const [processingState, setProcessingState] = useState('idle'); // 'idle' | 'thinking' | 'answering'
   const [chatHistory, setChatHistory] = useState([]);
-  const animationRef = useRef(null);
   const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef(null);
-  const [responseVideo, setResponseVideo] = useState('');
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const mainContentRef = useRef(null);
@@ -253,7 +259,7 @@ const HeroSectionRealtimeDemo = () => {
     console.log('调用 stopSpeech...');
     
     const audioElements = document.querySelectorAll('audio');
-    console.log('找到的音频元素数量:', audioElements.length);
+    console.log('找到的音频素数量:', audioElements.length);
     
     audioElements.forEach((audio, index) => {
       console.log(`停止音频 ${index}`);
@@ -901,7 +907,11 @@ const HeroSectionRealtimeDemo = () => {
         {/* 新的主要内容容器 */}
         <div 
           ref={mainContentRef}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center justify-center space-y-8 w-full max-w-2xl px-4"
+          className="absolute top-1/2 left-1/2 z-10 flex flex-col items-center justify-center space-y-8 w-full max-w-2xl px-4"
+          style={{ 
+            transform: 'translate(-50%, -50%) scale(0.85)',
+            transformOrigin: 'center center'
+          }}
         >
           {/* 问候语部分 */}
           <div className="text-center space-y-4">
@@ -1087,6 +1097,7 @@ const HeroSectionRealtimeDemo = () => {
           className={styles['visual-effect']}
         />
       </div>
+      <PhotoWall />
     </>
   );
 };

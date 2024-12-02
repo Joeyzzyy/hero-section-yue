@@ -1,0 +1,30 @@
+[
+    {
+      "id": 1,
+      "image": "/images/jsai.png",
+      "title": "Product Manager",
+      "time": "2023.10 - 2024.10",
+      "gradient": "from-slate-700 to-slate-900"
+    },
+    {
+      "id": 2,
+      "image": "/images/robosell.png",
+      "title": "Product Engineer",
+      "time": "2021.07 - 2023.10",
+      "gradient": "from-slate-800 to-slate-950"
+    },
+    {
+      "id": 3,
+      "image": "/images/alibaba.png",
+      "title": "Cross-border E-commerce Seller",
+      "time": "2019.11 - 2021.07",
+      "gradient": "from-slate-700 to-slate-900"
+    },
+    {
+      "id": 4,
+      "image": "/images/lindge.png",
+      "title": "Frontend Engineer",
+      "time": "2016.11 - 2019.11",
+      "gradient": "from-slate-800 to-slate-950"
+    }
+]
