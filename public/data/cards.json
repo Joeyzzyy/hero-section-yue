@@ -1,30 +1,38 @@
 [
-    {
-      "id": 1,
-      "image": "/images/jsai.png",
-      "title": "Product Manager",
-      "time": "2023.10 - 2024.10",
-      "gradient": "from-slate-700 to-slate-900"
-    },
-    {
-      "id": 2,
-      "image": "/images/robosell.png",
-      "title": "Product Engineer",
-      "time": "2021.07 - 2023.10",
-      "gradient": "from-slate-800 to-slate-950"
-    },
-    {
-      "id": 3,
-      "image": "/images/alibaba.png",
-      "title": "Cross-border E-commerce Seller",
-      "time": "2019.11 - 2021.07",
-      "gradient": "from-slate-700 to-slate-900"
-    },
-    {
-      "id": 4,
-      "image": "/images/lindge.png",
-      "title": "Frontend Engineer",
-      "time": "2016.11 - 2019.11",
-      "gradient": "from-slate-800 to-slate-950"
-    }
+  {
+    "id": 1,
+    "image": "/images/jsai.png",
+    "title": "产品经理",
+    "time": "2023.10 - 2024.10",
+    "gradient": "from-slate-700 to-slate-900",
+    "description": "右边是我在集思科技的工作内容描述，值得仔细看看！",
+    "details": " 负责集思科技在电商数字人直播行业内标杆产品的落地，覆盖纯预合成式、实时合成式及真人套皮数字人直播方案。\n- 带领8人团队推动产品迭代，串联售前、售中、售后工作。\n- 带领产品线实现30+品牌采购，百万收入增长，数百万续费；618大促累计提供7.8万小时直播，产生2.1亿GMV。\n- 提升数字人转化率，GMV达到真人直播30%产出，成本仅为10%。\n- 带领完成阿里创客松实验版直播概念产品，斩获冠军，完成数字人“一键带货”概念产品。"
+  },
+  {
+    "id": 2,
+    "image": "/images/robosell.png",
+    "title": "产品工程师",
+    "time": "2021.07 - 2023.10",
+    "gradient": "from-slate-800 to-slate-950",
+    "description": "右边是我负责Robosell期间的工作内容描述，值得仔细看看！",
+    "details": " 负责Robosell产品的落地和商业化探索，提升Shopify电商弃单挽回效果。\n- 带领8人团队，优化产品开发流程，推动海外市场营销和冷启动。\n- 实现GMV增长和产品商业化，助力100+商家稳定过节，获得20+Shoplazza站点使用。\n- 通过行为数据设计转化模型，提升近30%的弃单挽回率，达到月收入过万美金。"
+  },
+  {
+    "id": 3,
+    "image": "/images/alibaba.png",
+    "title": "外贸&跨境电商卖家",
+    "time": "2019.11 - 2021.07",
+    "gradient": "from-slate-700 to-slate-900",
+    "description": "不敢说创业，当过一阵子卖家，看看右边吧~",
+    "details": " 自主创业，负责阿里国际站平台跨境电商业务，涵盖全链路的外贸操作。\n- 优化产品包装、图片、标题、关键词等，保持主力产品搜索排名前十。\n- 通过询盘引导客户，翻单率超50%。\n- 调整生产与仓储关系，确保发货守约，提升产品质量和好评率。"
+  },
+  {
+    "id": 4,
+    "image": "/images/lindge.png",
+    "title": "前端工程师",
+    "time": "2016.11 - 2019.11",
+    "gradient": "from-slate-800 to-slate-950",
+    "description": "2016年我以前端码农的身份进入的职场！",
+    "details": " 参与开发智慧校园教育信息化产品，提升教育教学和学校电脑管理效率。\n- 参与凌极教学云、凌极云桌面产品，优化教学和管理流程。\n- 技术栈：AngularJS、HTML5、CSS3、.NET、C#、MySQL。\n- 负责设计业务流程图，推动开发进度，进行压力测试，制作安装包及用户手册，深度参与整个产品生命周期内的全部工作。"
+  }
 ]

@@ -61,7 +61,7 @@ export const CONTENT = {
     roles: [
       "产品经理 💼",
       "程序员 💻",
-      "享受人生大师 🏖",
+      "超级个体 🏖",
     ],
     iAm: "我是一名",
     description: "人生是段旅程，不是赛跑。💪",
@@ -120,6 +120,7 @@ const HeroSectionRealtimeDemo = () => {
   const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef(null);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(true);
+  const [isManuallyOpened, setIsManuallyOpened] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const mainContentRef = useRef(null);
   const historyPanelRef = useRef(null);
@@ -127,8 +128,11 @@ const HeroSectionRealtimeDemo = () => {
   const manualToggleTimeoutRef = useRef(null);
   const [isOverLimit, setIsOverLimit] = useState(false);
 
-  // 添加语言状态
-  const [currentLanguage, setCurrentLanguage] = useState(LANGUAGES.EN);
+  // 修改语言状态的初始值
+  const [currentLanguage, setCurrentLanguage] = useState(LANGUAGES.ZH);
+
+  // 添加一个状态来跟踪是否应该播放视频
+  const [shouldPlay, setShouldPlay] = useState(false);
 
   // ================ Audio Control Functions ================
   useEffect(() => {
@@ -649,7 +653,7 @@ const HeroSectionRealtimeDemo = () => {
   // 添加处理回车的函数
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // 防止换行
+      e.preventDefault(); // 止换行
       if (userInput.trim() && processingState === 'idle') {
         handleSubmit();
       }
@@ -668,37 +672,34 @@ const HeroSectionRealtimeDemo = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // 添加检查面板重叠的函数
+  // 修改检查面板重叠的函数
   const checkPanelOverlap = useCallback(() => {
-    // 如果是手动切换，则跳过自动检查
-    if (isManualToggle) return;
-
     if (!mainContentRef.current || !historyPanelRef.current) return;
+    
+    // 如果面板是手动打开的,则跳过自动检查
+    if (isManuallyOpened) return;
 
     const mainContent = mainContentRef.current.getBoundingClientRect();
     const historyPanel = historyPanelRef.current.getBoundingClientRect();
 
-    // 只检查重叠 - 如果空间不够就起
     const overlap = mainContent.left - (historyPanel.left + historyPanel.width) < 20;
     if (overlap && isHistoryPanelOpen) {
       setIsHistoryPanelOpen(false);
     }
-  }, [isHistoryPanelOpen, isManualToggle]);
+  }, [isHistoryPanelOpen, isManuallyOpened]);
 
-  // 更新切换按钮的点击处理函数
+  // 修改切换按钮的点击处理函数
   const handlePanelToggle = () => {
-    setIsHistoryPanelOpen(!isHistoryPanelOpen);
-    setIsManualToggle(true);
-
-    // 清除之前的定时器
-    if (manualToggleTimeoutRef.current) {
-      clearTimeout(manualToggleTimeoutRef.current);
+    const newOpenState = !isHistoryPanelOpen;
+    setIsHistoryPanelOpen(newOpenState);
+    
+    // 如果是手动打开面板,设置手动标记
+    if (newOpenState) {
+      setIsManuallyOpened(true);
+    } else {
+      // 如果是手动关闭面板,清除手动标记
+      setIsManuallyOpened(false);
     }
-
-    // 设置新的定时器，1秒后重新启用自动
-    manualToggleTimeoutRef.current = setTimeout(() => {
-      setIsManualToggle(false);
-    }, 1000);
   };
 
   // 清理定时器
@@ -733,6 +734,19 @@ const HeroSectionRealtimeDemo = () => {
   // 添加语言切换处理函数
   const toggleLanguage = () => {
     setCurrentLanguage(prev => prev === LANGUAGES.EN ? LANGUAGES.ZH : LANGUAGES.EN);
+  };
+
+  // 添加一个控制头像视频的方法
+  const handleAvatarVideoControl = ({ show, play, speaking }) => {
+    console.log('handleAvatarVideoControl 被调用:', { show, play, speaking });
+    
+    setShowVideo(show);
+    setShouldPlay(play);
+    
+    // 设置说话状态
+    if (speaking !== undefined) {
+      setIsSpeaking(speaking);
+    }
   };
 
   // ================ Render UI ================
@@ -989,8 +1003,31 @@ const HeroSectionRealtimeDemo = () => {
                   loop
                   muted
                   playsInline
+                  onLoadStart={() => console.log('视频开始加载')}
+                  onLoadedData={() => console.log('视频数据已加载')}
+                  onCanPlay={() => {
+                    console.log('视频可以播放');
+                    // 如果应该播放，则尝试播放
+                    if (shouldPlay && videoRef.current) {
+                      console.log('尝试播放视频...');
+                      videoRef.current.play()
+                        .then(() => {
+                          console.log('视频开始播放成功');
+                        })
+                        .catch(error => {
+                          console.error('视频播放失败:', error);
+                          setShowVideo(false);
+                        });
+                    }
+                  }}
+                  onPlay={() => console.log('视频开始播放')}
+                  onPause={() => console.log('视频已暂停')}
                   onError={(e) => {
-                    console.error('视频加载错误:', e);
+                    console.error('视频加载错误:', {
+                      error: e.target.error,
+                      networkState: e.target.networkState,
+                      readyState: e.target.readyState
+                    });
                     setShowVideo(false);
                   }}
                 />
@@ -1011,14 +1048,14 @@ const HeroSectionRealtimeDemo = () => {
                 value={userInput}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
-                disabled={processingState !== 'idle'}
+                disabled={processingState !== 'idle' || isSpeaking}
                 className={`w-full px-6 py-4 rounded-2xl bg-white/10 border 
                           ${isOverLimit ? 'border-red-500' : 'border-indigo-300/30'}
                           text-white backdrop-blur-md focus:ring-2 
                           ${isOverLimit ? 'focus:ring-red-500' : 'focus:ring-indigo-500'}
                           focus:border-transparent transition-all duration-300 
                           pr-24
-                          ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          ${processingState !== 'idle' || isSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}
                 placeholder={CONTENT[currentLanguage].inputPlaceholder}
                 maxLength={CHARACTER_LIMIT + 10}
               />
@@ -1057,7 +1094,7 @@ const HeroSectionRealtimeDemo = () => {
             <div className="flex gap-3 mt-4">
               <button
                 onClick={handleSubmit}
-                disabled={processingState !== 'idle' || !userInput.trim() || isOverLimit}
+                disabled={processingState !== 'idle' || !userInput.trim() || isOverLimit || isSpeaking}
                 className="flex-1 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 
                           hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl
                           transform hover:scale-105 transition-all duration-300 
@@ -1077,7 +1114,7 @@ const HeroSectionRealtimeDemo = () => {
                 ) : CONTENT[currentLanguage].sendButton}
               </button>
               
-              {isSpeaking && (
+              {processingState === 'answering' && (
                 <button
                   onClick={stopSpeech}
                   className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 
@@ -1097,7 +1134,7 @@ const HeroSectionRealtimeDemo = () => {
           className={styles['visual-effect']}
         />
       </div>
-      <PhotoWall />
+      <PhotoWall onTTSStateChange={handleAvatarVideoControl} />
     </>
   );
 };
