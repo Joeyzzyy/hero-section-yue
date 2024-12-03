@@ -134,6 +134,29 @@ const HeroSectionRealtimeDemo = () => {
   // 添加一个状态来跟踪是否应该播放视频
   const [shouldPlay, setShouldPlay] = useState(false);
 
+  // 添加预加载状态
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  
+  // 添加预加载逻辑
+  useEffect(() => {
+    // 预加载图片
+    const avatarImage = new Image();
+    avatarImage.src = '/images/zhuyue.webp';
+    avatarImage.onload = () => setImageLoaded(true);
+
+    // 预加载视频
+    const videoElement = document.createElement('video');
+    videoElement.preload = 'auto';
+    videoElement.src = '/images/zhuyue-lipmoving.mp4';
+    videoElement.onloadeddata = () => setVideoLoaded(true);
+
+    return () => {
+      videoElement.src = '';
+      avatarImage.src = '';
+    };
+  }, []);
+
   // ================ Audio Control Functions ================
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -740,14 +763,113 @@ const HeroSectionRealtimeDemo = () => {
   const handleAvatarVideoControl = ({ show, play, speaking }) => {
     console.log('handleAvatarVideoControl 被调用:', { show, play, speaking });
     
-    setShowVideo(show);
-    setShouldPlay(play);
-    
-    // 设置说话状态
-    if (speaking !== undefined) {
-      setIsSpeaking(speaking);
+    if (show && play) {
+      console.log('尝试播放视频...');
+      console.log('videoRef.current 状态:', videoRef.current);
+      
+      setShowVideo(true);
+      setShouldPlay(true);
+      
+      // 使用 setTimeout 确保状态更新后再播放视频
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log('重置视频位置并开始播放');
+          videoRef.current.currentTime = 0;
+          
+          videoRef.current.play()
+            .then(() => {
+              console.log('视频开始播放成功');
+            })
+            .catch(error => {
+              console.error('视频播放失败:', error);
+            });
+        } else {
+          console.error('videoRef.current 不存在');
+        }
+      }, 100);
+    } else {
+      console.log('停止视频播放');
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      setShowVideo(false);
+      setShouldPlay(false);
     }
+    
+    setIsSpeaking(speaking);
   };
+
+  // 添加对视频显示状态的监听
+  useEffect(() => {
+    console.log('视频显示状态改变:', { showVideo, shouldPlay });
+    if (showVideo && shouldPlay && videoRef.current) {
+      console.log('useEffect 中尝试播放视频');
+      videoRef.current.currentTime = 0;
+      videoRef.current.play()
+        .then(() => {
+          console.log('useEffect 中视频播放成功');
+        })
+        .catch(error => {
+          console.error('useEffect 中视频播放失败:', error);
+        });
+    }
+  }, [showVideo, shouldPlay]);
+
+  // 修改 Avatar 部分的渲染逻辑
+  const renderAvatar = () => (
+    <div className={`${styles['avatar-container']} ${isExpanded ? '' : styles['avatar-contracted']}`}>
+      <div className={`relative ${isExpanded ? 'w-64 h-64' : 'w-48 h-48'} transition-all duration-500 
+        ${!isExpanded ? '-translate-x-20' : ''}`}>
+        {/* 添加加载占位符 */}
+        {!imageLoaded && !showVideo && (
+          <div className="absolute inset-0 bg-indigo-900/20 rounded-full animate-pulse" />
+        )}
+        
+        <img
+          src="/images/zhuyue.webp"
+          alt="Digital Avatar"
+          className={`w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm 
+            transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          loading="eager"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          style={{ display: showVideo ? 'none' : 'block' }}
+        />
+        
+        {showVideo && (
+          <>
+            {/* 添加视频加载占位符 */}
+            {!videoLoaded && (
+              <div className="absolute inset-0 bg-indigo-900/20 rounded-full animate-pulse" />
+            )}
+            <video
+              ref={videoRef}
+              src="/images/zhuyue-lipmoving.mp4"
+              className={`absolute inset-0 w-full h-full rounded-full border-4 
+                border-indigo-300/50 backdrop-blur-sm transition-all duration-500 ease-in-out
+                ${videoLoaded && showVideo ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
+              style={{
+                transform: showVideo ? 'scale(1.05)' : 'scale(1)',
+                transformOrigin: 'center',
+                objectFit: 'cover'
+              }}
+              preload="auto"
+              playsInline
+              muted
+              loop
+              onLoadedData={() => setVideoLoaded(true)}
+            />
+          </>
+        )}
+        
+        {floatingTags.map(tag => (
+          <div key={tag.id} style={tag.style} className="transform">
+            {tag.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   // ================ Render UI ================
   return (
@@ -978,67 +1100,7 @@ const HeroSectionRealtimeDemo = () => {
             </p>
           </div>
 
-          {/* Avatar 部分 */}
-          <div className={`${styles['avatar-container']} ${isExpanded ? '' : styles['avatar-contracted']}`}>
-            <div className={`relative ${isExpanded ? 'w-64 h-64' : 'w-48 h-48'} transition-all duration-500 
-              ${!isExpanded ? '-translate-x-20' : ''}`}>
-              {!showVideo ? (
-                <img
-                  src="/images/zhuyue.png"
-                  alt="Digital Avatar"
-                  className="w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500"
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src="/images/zhuyue-lipmoving.mp4"
-                  className={`absolute inset-0 w-full h-full rounded-full border-4 border-indigo-300/50 backdrop-blur-sm transition-all duration-500 ease-in-out ${
-                    showVideo ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
-                  }`}
-                  style={{
-                    transform: showVideo ? 'scale(1.05)' : 'scale(1)',
-                    transformOrigin: 'center',
-                    objectFit: 'cover'
-                  }}
-                  loop
-                  muted
-                  playsInline
-                  onLoadStart={() => console.log('视频开始加载')}
-                  onLoadedData={() => console.log('视频数据已加载')}
-                  onCanPlay={() => {
-                    console.log('视频可以播放');
-                    // 如果应该播放，则尝试播放
-                    if (shouldPlay && videoRef.current) {
-                      console.log('尝试播放视频...');
-                      videoRef.current.play()
-                        .then(() => {
-                          console.log('视频开始播放成功');
-                        })
-                        .catch(error => {
-                          console.error('视频播放失败:', error);
-                          setShowVideo(false);
-                        });
-                    }
-                  }}
-                  onPlay={() => console.log('视频开始播放')}
-                  onPause={() => console.log('视频已暂停')}
-                  onError={(e) => {
-                    console.error('视频加载错误:', {
-                      error: e.target.error,
-                      networkState: e.target.networkState,
-                      readyState: e.target.readyState
-                    });
-                    setShowVideo(false);
-                  }}
-                />
-              )}
-              {floatingTags.map(tag => (
-                <div key={tag.id} style={tag.style} className="transform">
-                  {tag.text}
-                </div>
-              ))}
-            </div>
-          </div>
+          {renderAvatar()}
 
           {/* 输入控制区域 */}
           <div className="w-full">
