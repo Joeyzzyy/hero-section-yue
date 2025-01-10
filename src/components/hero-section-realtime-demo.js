@@ -7,11 +7,6 @@ import PhotoWall from './photo-wall';
 // 添加字符限制常量
 const CHARACTER_LIMIT = 128;
 
-// 添加语言常量
-const LANGUAGES = {
-  EN: 'en'
-};
-
 // 添加内容字典
 const CONTENT = {
   greeting: "Hey, I'm YueZhu (Joey)",
@@ -75,9 +70,6 @@ const HeroSectionRealtimeDemo = () => {
   const [isManualToggle, setIsManualToggle] = useState(false);
   const manualToggleTimeoutRef = useRef(null);
   const [isOverLimit, setIsOverLimit] = useState(false);
-
-  // 修改语言状态的初始值
-  const [currentLanguage] = useState(LANGUAGES.EN);
 
   // 添加一个状态来跟踪是否应该播放视频
   const [shouldPlay, setShouldPlay] = useState(false);
@@ -357,7 +349,7 @@ const HeroSectionRealtimeDemo = () => {
 
       audio.onended = () => {
         stopSpeech();
-        if (currentLanguage === LANGUAGES.EN) {
+        if (shouldPlay) {
           URL.revokeObjectURL(audio.src);
         }
         audio.remove();
@@ -366,7 +358,7 @@ const HeroSectionRealtimeDemo = () => {
       audio.onerror = (error) => {
         console.error('音频播放错误:', error);
         stopSpeech();
-        if (currentLanguage === LANGUAGES.EN) {
+        if (shouldPlay) {
           URL.revokeObjectURL(audio.src);
         }
         audio.remove();
@@ -447,8 +439,7 @@ const HeroSectionRealtimeDemo = () => {
         body: JSON.stringify({
           inputs: { 
             Question: userInput,
-            History: historyString || '',
-            Lang: currentLanguage
+            History: historyString || ''
           },
           response_mode: "blocking",
           user: "default_user",
