@@ -38,52 +38,59 @@ const PhotoWall = ({ onTTSStateChange }) => {
     try {
       setIsSpeaking(true);
 
-      // 使用火山引擎 TTS 服务
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text
-        })
+      // 使用 ElevenLabs TTS 服务
+      const client = new ElevenLabsClient({
+        apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
       });
+      
+      const audioStream = await client.textToSpeech.convert(
+        process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
+        {
+          model_id: "eleven_multilingual_v1",
+          text: text,
+          output_format: "mp3_44100_128",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
+            speaking_rate: 1.0
+          }
+        },
+        { stream: false }
+      );
 
-      if (!response.ok) {
-        throw new Error(`TTS API 错误: ${response.status}`);
-      }
+      // 通知父组件展示和播放视频
+      onTTSStateChange?.({ show: true, play: true, speaking: true });
 
-      const data = await response.json();
-      console.log('收到 TTS 响应:', data);
-
-      if (data.code === 3000 && data.data) {
-        const audioData = atob(data.data);
-        const arrayBuffer = new ArrayBuffer(audioData.length);
-        const view = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < audioData.length; i++) {
-          view[i] = audioData.charCodeAt(i);
+      // 创建和播放音频
+      const chunks = [];
+      try {
+        while (true) {
+          const { done, value } = await audioStream.reader.read();
+          if (done) break;
+          chunks.push(value);
         }
-
-        const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        // 创建并播放音频
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-
-        // 设置音频事件监听器
-        audio.onended = () => {
-          onTTSStateChange?.({ show: false, play: false, speaking: false });
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-
-        // 在音频成功播放后通知父组件展示和播放视频
-        await audio.play();
-        onTTSStateChange?.({ show: true, play: true, speaking: true });
-      } else {
-        throw new Error(data.message || '服务器返回了无效的响应');
+      } finally {
+        audioStream.reader.releaseLock();
       }
+      
+      const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
+      const audioBlob = new Blob([audioData], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      // 设置音频事件监听器
+      audio.onended = () => {
+        onTTSStateChange?.({ show: false, play: false, speaking: false });
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+
     } catch (error) {
       console.error('TTS processing failed:', error);
       onTTSStateChange?.({ show: false, play: false, speaking: false });
@@ -106,25 +113,37 @@ const PhotoWall = ({ onTTSStateChange }) => {
     setIsTyping(true);
     setDisplayText('');
     
-    // 立即开始 TTS 处理
+    // 使用 card.description 进行 TTS
     handleTTS(card.description);
     
-    // 开始打字机效果
-    let index = 0;
+    // 清理之前可能存在的 interval
+    if (window.typingInterval) {
+      clearInterval(window.typingInterval);
+    }
+    
+    let currentText = '';
     const text = card.details;
-    const typingInterval = setInterval(() => {
-      if (index < text.length) {
-        setDisplayText((prev) => prev + text.charAt(index));
-        index++;
+    // 将 interval 保存到全局变量中，以便后续清理
+    window.typingInterval = setInterval(() => {
+      if (currentText.length < text.length) {
+        currentText = text.substring(0, currentText.length + 1);
+        setDisplayText(currentText);
       } else {
         setIsTyping(false);
-        clearInterval(typingInterval);
+        clearInterval(window.typingInterval);
+        window.typingInterval = null;
       }
     }, 30);
   };
 
   // 处理弹窗关闭
   const handleCloseModal = () => {
+    // 清理打字机效果
+    if (window.typingInterval) {
+      clearInterval(window.typingInterval);
+      window.typingInterval = null;
+    }
+    
     // 停止音频播放
     if (audioRef.current) {
       audioRef.current.pause();

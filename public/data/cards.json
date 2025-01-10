@@ -2,37 +2,37 @@
   {
     "id": 1,
     "image": "/images/jsai.png",
-    "title": "产品经理",
+    "title": "Product Manager",
     "time": "2023.10 - 2024.10",
     "gradient": "from-slate-700 to-slate-900",
-    "description": "右边是我在集思科技的工作内容描述，值得仔细看看！",
-    "details": " 负责集思科技在电商数字人直播行业内标杆产品的落地，覆盖纯预合成式、实时合成式及真人套皮数字人直播方案。\n- 带领8人团队推动产品迭代，串联售前、售中、售后工作。\n- 带领产品线实现30+品牌采购，百万收入增长，数百万续费；618大促累计提供7.8万小时直播，产生2.1亿GMV。\n- 提升数字人转化率，GMV达到真人直播30%产出，成本仅为10%。\n- 带领完成阿里创客松实验版直播概念产品，斩获冠军，完成数字人“一键带货”概念产品。"
+    "description": "Check out my work experience at JS Technology on the right!",
+    "details": " Led the development of flagship products in e-commerce digital human livestreaming industry at JS Technology, covering pre-synthesized, real-time synthesized, and virtual avatar streaming solutions.\n- Led an 8-person team driving product iterations, coordinating pre-sales, sales, and after-sales operations.\n- Achieved 30+ brand acquisitions, millions in revenue growth and renewals; provided 78,000 hours of livestreaming during 618 Shopping Festival, generating ¥210M GMV.\n- Improved digital human conversion rates to 30% of human livestreaming performance at only 10% of the cost.\n- Led the team to win Alibaba Createathon with an experimental livestreaming product, developing a 'one-click livestreaming' concept for digital humans."
   },
   {
     "id": 2,
     "image": "/images/robosell.png",
-    "title": "产品工程师",
+    "title": "Product Engineer",
     "time": "2021.07 - 2023.10",
     "gradient": "from-slate-800 to-slate-950",
-    "description": "右边是我负责Robosell期间的工作内容描述，值得仔细看看！",
-    "details": " 负责Robosell产品的落地和商业化探索，提升Shopify电商弃单挽回效果。\n- 带领8人团队，优化产品开发流程，推动海外市场营销和冷启动。\n- 实现GMV增长和产品商业化，助力100+商家稳定过节，获得20+Shoplazza站点使用。\n- 通过行为数据设计转化模型，提升近30%的弃单挽回率，达到月收入过万美金。"
+    "description": "Check out my responsibilities at Robosell on the right!",
+    "details": " Responsible for Robosell product implementation and commercialization, improving cart abandonment recovery for Shopify merchants.\n- Led an 8-person team, optimized product development process, and drove overseas marketing and cold start initiatives.\n- Achieved GMV growth and product commercialization, helping 100+ merchants maintain stable operations, gained 20+ Shoplazza site adoptions.\n- Designed conversion models using behavioral data, improving cart recovery rate by nearly 30%, achieving monthly revenue exceeding $10,000."
   },
   {
     "id": 3,
     "image": "/images/alibaba.png",
-    "title": "外贸&跨境电商卖家",
+    "title": "International Trade & Cross-border E-commerce Seller",
     "time": "2019.11 - 2021.07",
     "gradient": "from-slate-700 to-slate-900",
-    "description": "不敢说创业，当过一阵子卖家，看看右边吧~",
-    "details": " 自主创业，负责阿里国际站平台跨境电商业务，涵盖全链路的外贸操作。\n- 优化产品包装、图片、标题、关键词等，保持主力产品搜索排名前十。\n- 通过询盘引导客户，翻单率超50%。\n- 调整生产与仓储关系，确保发货守约，提升产品质量和好评率。"
+    "description": "Not exactly entrepreneurship, but I was a seller for a while. Check it out on the right!",
+    "details": " Independently operated cross-border e-commerce business on Alibaba International, managing end-to-end foreign trade operations.\n- Optimized product packaging, images, titles, and keywords, maintaining top 10 search rankings for main products.\n- Guided customer inquiries with over 50% reorder rate.\n- Balanced production and storage relationships to ensure timely delivery, improving product quality and positive reviews."
   },
   {
     "id": 4,
     "image": "/images/lindge.png",
-    "title": "前端工程师",
+    "title": "Frontend Engineer",
     "time": "2016.11 - 2019.11",
     "gradient": "from-slate-800 to-slate-950",
-    "description": "2016年我以前端码农的身份进入的职场！",
-    "details": " 参与开发智慧校园教育信息化产品，提升教育教学和学校电脑管理效率。\n- 参与凌极教学云、凌极云桌面产品，优化教学和管理流程。\n- 技术栈：AngularJS、HTML5、CSS3、.NET、C#、MySQL。\n- 负责设计业务流程图，推动开发进度，进行压力测试，制作安装包及用户手册，深度参与整个产品生命周期内的全部工作。"
+    "description": "I started my career as a frontend developer in 2016!",
+    "details": " Participated in developing smart campus education informatization products to improve teaching efficiency and school computer management.\n- Contributed to Lindge Teaching Cloud and Lindge Cloud Desktop products, optimizing teaching and management processes.\n- Tech stack: AngularJS, HTML5, CSS3, .NET, C#, MySQL.\n- Responsible for designing business flow charts, driving development progress, conducting stress testing, creating installation packages and user manuals, deeply involved in all aspects throughout the product lifecycle."
   }
 ]

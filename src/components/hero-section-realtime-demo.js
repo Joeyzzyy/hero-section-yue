@@ -8,102 +8,50 @@ import PhotoWall from './photo-wall';
 const CHARACTER_LIMIT = 128;
 
 // 添加语言常量
-export const LANGUAGES = {
-  EN: 'en',
-  ZH: 'zh'
+const LANGUAGES = {
+  EN: 'en'
 };
 
 // 添加内容字典
-export const CONTENT = {
-  [LANGUAGES.EN]: {
-    greeting: "Hey, I'm YueZhu (Joey)",
-    roles: [
-      "Product Manager 💼",
-      "Programmer 💻",
-      "Chill Seeker 🏖"
-    ],
-    iAm: "I am a",
-    description: "Working hard now, so I can relax later. 💪 Life is a journey, not a race.",
-    inputPlaceholder: "Ask me anything...",
-    characterLimit: "Please keep your message under 128 characters",
-    sendButton: "Send",
-    thinkingStatus: "Thinking",
-    answeringStatus: "Answering",
-    stopButton: "Stop",
-    chatHistory: {
-      title: "Conversation History",
-      empty: {
-        title: "Start a conversation",
-        subtitle: "Your chat history will appear here"
-      },
-      you: "You",
-      assistant: "YueZhu (Joey)",
-      keyPoints: "Key Points:",
-      videoRecommendation: "Video Recommendation:",
-      openVideo: "Open video in new window →"
+const CONTENT = {
+  greeting: "Hey, I'm YueZhu (Joey)",
+  roles: [
+    "Product Manager 💼",
+    "Developer 💻",
+    "Chill Seeker 🏖"
+  ],
+  iAm: "I am a",
+  description: "Working hard now, so I can relax later. 💪 Life is a journey, not a race.",
+  inputPlaceholder: "Ask me anything...",
+  characterLimit: "Please keep your message under 128 characters",
+  sendButton: "Send",
+  thinkingStatus: "Thinking",
+  answeringStatus: "Answering",
+  stopButton: "Stop",
+  chatHistory: {
+    title: "Conversation History",
+    empty: {
+      title: "Start a conversation",
+      subtitle: "Your chat history will appear here"
     },
-    mobileMessage: {
-      title: "Oops! Desktop Only",
-      greeting: "Hey there, mobile friend! 👋",
-      line1: "I'm a bit of a desktop diva 💅",
-      line2: "Let's chat on a bigger screen!",
-      waiting: "Waiting for desktop...",
-      funFact: "Fun fact: I'm not just being difficult,\nI genuinely want to give you the best experience! 🌟"
-    },
-    preferredLanguage: "You prefer to chat with me in",
-    photoWall: {
-      slowDown: "Slow Down",
-      speedUp: "Speed Up"
-    }
+    you: "You",
+    assistant: "Joey.Z",
+    keyPoints: "Key Points:",
+    videoRecommendation: "Video Recommendation:",
+    openVideo: "Open video in new window →"
   },
-  [LANGUAGES.ZH]: {
-    greeting: "你好，我是朱越",
-    roles: [
-      "产品经理 💼",
-      "程序员 💻",
-      "超级个体 🏖",
-    ],
-    iAm: "我是一名",
-    description: "人生是段旅程，不是赛跑。💪",
-    inputPlaceholder: "和我聊点什么...",
-    characterLimit: "请将消息控制在128字符以内",
-    sendButton: "发送",
-    thinkingStatus: "思考中",
-    answeringStatus: "回答中",
-    stopButton: "停止",
-    chatHistory: {
-      title: "对话历史",
-      empty: {
-        title: "开始对话",
-        subtitle: "你的聊天记录将显示在这里"
-      },
-      you: "你",
-      assistant: "朱越",
-      keyPoints: "要点：",
-      videoRecommendation: "视频推荐：",
-      openVideo: "在新窗口打开视频 →"
-    },
-    mobileMessage: {
-      title: "抱歉！仅支持桌面版",
-      greeting: "亲爱的移动端用户！👋",
-      line1: "我是个桌面端控 💅",
-      line2: "让我们在更大的屏幕上聊天吧！",
-      waiting: "等待切换到桌面端...",
-      funFact: "有趣的是：这不是故意为难你，我真心想给你最好的体验！🌟"
-    },
-    preferredLanguage: "你希望和我交流时用",
-    photoWall: {
-      slowDown: "减速",
-      speedUp: "加速"
-    }
+  mobileMessage: {
+    title: "Oops! Desktop Only",
+    greeting: "Hey there, mobile friend! 👋",
+    line1: "I'm a bit of a desktop diva 💅",
+    line2: "Let's chat on a bigger screen!",
+    waiting: "Waiting for desktop...",
+    funFact: "Fun fact: I'm not just being difficult,\nI genuinely want to give you the best experience! 🌟"
+  },
+  photoWall: {
+    slowDown: "Slow Down",
+    speedUp: "Speed Up"
   }
-};
-
-// 添加字节语音服务的配置
-const BYTEDANCE_TTS_CONFIG = {
-  APP_ID: process.env.NEXT_PUBLIC_BYTEDANCE_APP_ID,
-  TOKEN: process.env.NEXT_PUBLIC_BYTEDANCE_TOKEN,
-  VOICE_TYPE: process.env.NEXT_PUBLIC_BYTEDANCE_VOICE_TYPE,
 };
 
 const HeroSectionRealtimeDemo = () => {
@@ -129,7 +77,7 @@ const HeroSectionRealtimeDemo = () => {
   const [isOverLimit, setIsOverLimit] = useState(false);
 
   // 修改语言状态的初始值
-  const [currentLanguage, setCurrentLanguage] = useState(LANGUAGES.ZH);
+  const [currentLanguage] = useState(LANGUAGES.EN);
 
   // 添加一个状态来跟踪是否应该播放视频
   const [shouldPlay, setShouldPlay] = useState(false);
@@ -348,147 +296,27 @@ const HeroSectionRealtimeDemo = () => {
         setIsExpanded(true);
       }
 
-      let audioStream;
+      // 使用 ElevenLabs TTS 服务
+      const client = new ElevenLabsClient({
+        apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
+      });
       
-      // 根据当前语言选择不同的 TTS 服务
-      if (currentLanguage === LANGUAGES.ZH) {
-        console.log('开始生成中文语音...');
-        const response = await fetch('/api/tts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: text
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`字节跳动 TTS API 错误: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('收到 TTS 响应:', data);
-        
-        if (data.code === 3000 && data.data) {
-          console.log('开始处理音频数据...');
-          // 创建一个 Blob 对象，将base64音频数据转换为二进制
-          const audioData = atob(data.data);
-          const arrayBuffer = new ArrayBuffer(audioData.length);
-          const view = new Uint8Array(arrayBuffer);
-          for (let i = 0; i < audioData.length; i++) {
-            view[i] = audioData.charCodeAt(i);
+      const audioStream = await client.textToSpeech.convert(
+        process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
+        {
+          model_id: "eleven_multilingual_v1",
+          text: text,
+          output_format: "mp3_44100_128",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
+            speaking_rate: 1.0
           }
-          
-          const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          
-          const audio = new Audio();
-          audio.style.display = 'none';
-          audio.preload = 'auto';
-          document.body.appendChild(audio);
-
-          // 添加视频显示逻辑
-          setShowVideo(true);
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          if (videoRef.current) {
-            try {
-              await videoRef.current.play();
-            } catch (error) {
-              console.error('视频播放失败:', error);
-              setShowVideo(false);
-            }
-          }
-          
-
-          return new Promise((resolve, reject) => {
-            let isPlaying = false;  // 添加播放状态标志
-            console.log('设置音频事件监听器...');
-            
-            audio.oncanplaythrough = async () => {
-              console.log('音频可以播放了...');
-              if (isPlaying) {
-                console.log('已经在播放中，忽略重复触发');
-                return;
-              }
-              
-              try {
-                isPlaying = true;  // 设置播放状态
-                await audio.play();
-                console.log('开始播放音频');
-                setIsSpeaking(true);
-              } catch (error) {
-                console.error('播放失败:', error);
-                isPlaying = false;  // 重置播放状态
-                reject(error);
-              }
-            };
-
-            audio.onended = () => {
-              console.log('音频播放结束');
-              isPlaying = false;  // 重置播放状态
-
-              // 停止视频播放
-              if (videoRef.current) {
-                videoRef.current.pause();
-              }
-              setShowVideo(false);
-              
-              // 先移除事件监听器，防止重复触发
-              audio.oncanplaythrough = null;
-              audio.onended = null;
-              audio.onerror = null;
-              
-              stopSpeech();
-              URL.revokeObjectURL(audioUrl);
-              audio.remove();
-              resolve();
-            };
-
-            audio.onerror = (error) => {
-              console.error('音频错误:', error);
-              isPlaying = false;  // 重置播放状态
-              
-              // 同样移除事件监听器
-              audio.oncanplaythrough = null;
-              audio.onended = null;
-              audio.onerror = null;
-              
-              stopSpeech();
-              URL.revokeObjectURL(audioUrl);
-              audio.remove();
-              reject(error);
-            };
-
-            audio.src = audioUrl;
-          });
-        } else {
-          throw new Error(data.message || '服务器返回了无效的响应');
-        }
-      } else {
-        // 使用原有的 ElevenLabs TTS 服务
-        const client = new ElevenLabsClient({
-          apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-        });
-        
-        audioStream = await client.textToSpeech.convert(
-          process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID, 
-          {
-            model_id: "eleven_multilingual_v1",
-            text: text,
-            output_format: "mp3_44100_128",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.0,
-              use_speaker_boost: true,
-              speaking_rate: 1.0
-            }
-          },
-          { stream: false }
-        );
-      }
+        },
+        { stream: false }
+      );
 
       // 修改视频显示和播放逻辑
       setShowVideo(true);
@@ -510,27 +338,22 @@ const HeroSectionRealtimeDemo = () => {
       audio.style.display = 'none';
       document.body.appendChild(audio);
 
-      if (currentLanguage === LANGUAGES.ZH) {
-        // 字节跳动 TTS 返回的是直接的音频 URL
-        audio.src = audioStream.data;
-      } else {
-        // ElevenLabs TTS 返回的是流数据
-        const chunks = [];
-        try {
-          while (true) {
-            const { done, value } = await audioStream.reader.read();
-            if (done) break;
-            chunks.push(value);
-          }
-        } finally {
-          audioStream.reader.releaseLock();
+      // ElevenLabs TTS 返回的是流数据
+      const chunks = [];
+      try {
+        while (true) {
+          const { done, value } = await audioStream.reader.read();
+          if (done) break;
+          chunks.push(value);
         }
-        
-        const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
-        const blob = new Blob([audioData], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(blob);
-        audio.src = audioUrl;
+      } finally {
+        audioStream.reader.releaseLock();
       }
+      
+      const audioData = new Uint8Array(chunks.reduce((acc, chunk) => [...acc, ...chunk], []));
+      const blob = new Blob([audioData], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(blob);
+      audio.src = audioUrl;
 
       audio.onended = () => {
         stopSpeech();
@@ -559,7 +382,7 @@ const HeroSectionRealtimeDemo = () => {
       });
 
     } catch (error) {
-      console.error('TTS 错误:', error);
+      console.error('TTS error:', error);
       setShowVideo(false);
       stopSpeech();
       throw error;
@@ -752,11 +575,6 @@ const HeroSectionRealtimeDemo = () => {
     const input = e.target.value;
     setUserInput(input);
     setIsOverLimit(input.length > CHARACTER_LIMIT);
-  };
-
-  // 添加语言切换处理函数
-  const toggleLanguage = () => {
-    setCurrentLanguage(prev => prev === LANGUAGES.EN ? LANGUAGES.ZH : LANGUAGES.EN);
   };
 
   // 添加一个控制头像视频的方法
@@ -956,7 +774,7 @@ const HeroSectionRealtimeDemo = () => {
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
                 />
               </svg>
-              <h3 className="font-medium text-white/90">{CONTENT[currentLanguage].chatHistory.title}</h3>
+              <h3 className="font-medium text-white/90">{CONTENT.chatHistory.title}</h3>
             </div>
             {/* 添加切换按钮 */}
             <button 
@@ -985,8 +803,8 @@ const HeroSectionRealtimeDemo = () => {
                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
                   />
                 </svg>
-                <p className="text-sm font-medium">{CONTENT[currentLanguage].chatHistory.empty.title}</p>
-                <p className="text-xs mt-1">{CONTENT[currentLanguage].chatHistory.empty.subtitle}</p>
+                <p className="text-sm font-medium">{CONTENT.chatHistory.empty.title}</p>
+                <p className="text-xs mt-1">{CONTENT.chatHistory.empty.subtitle}</p>
               </div>
             ) : (
               <div className="p-4 space-y-4">
@@ -996,13 +814,13 @@ const HeroSectionRealtimeDemo = () => {
                     className={`mb-4 ${message.type === 'user' ? 'text-blue-300' : 'text-green-300'}`}
                   >
                     <div className="text-sm opacity-70 mb-1 font-medium">
-                      {message.type === 'user' ? CONTENT[currentLanguage].chatHistory.you : CONTENT[currentLanguage].chatHistory.assistant}:
+                      {message.type === 'user' ? CONTENT.chatHistory.you : CONTENT.chatHistory.assistant}:
                     </div>
                     <div className="text-white/80 bg-white/5 rounded-lg p-3 text-sm">
                       {message.content}
                       {message.type === 'ai' && message.bulletPoints && message.bulletPoints.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <p className="text-indigo-300">{CONTENT[currentLanguage].chatHistory.keyPoints}</p>
+                          <p className="text-indigo-300">{CONTENT.chatHistory.keyPoints}</p>
                           <ul className="list-disc list-inside space-y-1 pl-2">
                             {message.bulletPoints.map((point, idx) => (
                               <li key={idx} className="text-white/70">
@@ -1014,7 +832,7 @@ const HeroSectionRealtimeDemo = () => {
                       )}
                       {message.type === 'ai' && message.video && (
                         <div className="mt-3">
-                          <p className="text-indigo-300 mb-2">{CONTENT[currentLanguage].chatHistory.videoRecommendation}</p>
+                          <p className="text-indigo-300 mb-2">{CONTENT.chatHistory.videoRecommendation}</p>
                           <div className="relative aspect-video rounded-lg overflow-hidden">
                             <video 
                               src={message.video}
@@ -1028,7 +846,7 @@ const HeroSectionRealtimeDemo = () => {
                             rel="noopener noreferrer"
                             className="inline-block mt-2 text-indigo-400 hover:text-indigo-300 transition-colors"
                           >
-                            {CONTENT[currentLanguage].chatHistory.openVideo}
+                            {CONTENT.chatHistory.openVideo}
                           </a>
                         </div>
                       )}
@@ -1053,50 +871,23 @@ const HeroSectionRealtimeDemo = () => {
           <div className="text-center space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-300 via-cyan-300 to-indigo-400 animate-gradient">
-                {CONTENT[currentLanguage].greeting}
+                {CONTENT.greeting}
               </span>
             </h1>
             
             <div className="relative">
               <div className="flex items-center justify-center space-x-3 text-xl text-white/80">
-                <span className={styles['typing-text']}>{CONTENT[currentLanguage].iAm}</span>
+                <span className={styles['typing-text']}>{CONTENT.iAm}</span>
                 <div className={styles['dynamic-text']}>
-                  {CONTENT[currentLanguage].roles.map((role, index) => (
+                  {CONTENT.roles.map((role, index) => (
                     <span key={index}>{role}</span>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* 添加语言切换器和语言偏好提示 */}
-            <div className="flex items-center justify-center gap-4 mt-2">
-              <span className="text-sm text-white/70">
-                {CONTENT[currentLanguage].preferredLanguage}
-              </span>
-              <button
-                onClick={toggleLanguage}
-                className="group relative flex items-center gap-2 px-4 py-2 bg-white/10 
-                          hover:bg-white/15 backdrop-blur-md rounded-full border border-white/20 
-                          text-white/90 hover:text-white transition-all duration-300"
-              >
-                <span className={`text-sm font-medium transition-all duration-300 
-                  ${currentLanguage === LANGUAGES.EN ? 'opacity-100' : 'opacity-50'}`}>
-                  English
-                </span>
-                <div className={`w-8 h-5 flex items-center bg-indigo-500/30 rounded-full p-1 transition-all duration-300
-                  ${currentLanguage === LANGUAGES.ZH ? 'bg-indigo-500' : ''}`}>
-                  <div className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform duration-300
-                    ${currentLanguage === LANGUAGES.ZH ? 'translate-x-3' : ''}`} />
-                </div>
-                <span className={`text-sm font-medium transition-all duration-300
-                  ${currentLanguage === LANGUAGES.ZH ? 'opacity-100' : 'opacity-50'}`}>
-                  中文
-                </span>
-              </button>
-            </div>
-
             <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed backdrop-blur-sm py-2">
-              {CONTENT[currentLanguage].description}
+              {CONTENT.description}
             </p>
           </div>
 
@@ -1118,7 +909,7 @@ const HeroSectionRealtimeDemo = () => {
                           focus:border-transparent transition-all duration-300 
                           pr-24
                           ${processingState !== 'idle' || isSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-                placeholder={CONTENT[currentLanguage].inputPlaceholder}
+                placeholder={CONTENT.inputPlaceholder}
                 maxLength={CHARACTER_LIMIT + 10}
               />
               {/* Character count indicator - 调整样式确保始终可见 */}
@@ -1149,7 +940,7 @@ const HeroSectionRealtimeDemo = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span>{CONTENT[currentLanguage].characterLimit}</span>
+                <span>{CONTENT.characterLimit}</span>
               </div>
             )}
 
@@ -1165,15 +956,15 @@ const HeroSectionRealtimeDemo = () => {
               >
                 {processingState === 'thinking' ? (
                   <span className="flex items-center justify-center">
-                    {CONTENT[currentLanguage].thinkingStatus}
+                    {CONTENT.thinkingStatus}
                     <span className="ml-2 animate-pulse">...</span>
                   </span>
                 ) : processingState === 'answering' ? (
                   <span className="flex items-center justify-center">
-                    {CONTENT[currentLanguage].answeringStatus}
+                    {CONTENT.answeringStatus}
                     <span className="ml-2 animate-pulse">...</span>
                   </span>
-                ) : CONTENT[currentLanguage].sendButton}
+                ) : CONTENT.sendButton}
               </button>
               
               {processingState === 'answering' && (
@@ -1183,7 +974,7 @@ const HeroSectionRealtimeDemo = () => {
                             hover:from-red-600 hover:to-pink-600 text-white rounded-xl
                             transform hover:scale-105 transition-all duration-300 font-medium"
                 >
-                  {CONTENT[currentLanguage].stopButton}
+                  {CONTENT.stopButton}
                 </button>
               )}
             </div>
